@@ -1,10 +1,12 @@
 from dataclasses import dataclass, field
 import torch
 import torch.nn as nn
+#import numpy as np
 
 import common_utils
 from common_utils import ibrl_utils as utils
 from bc.multiview_encoder import MultiViewEncoder, MultiViewEncoderConfig
+import copy as cp
 
 
 def build_fc(in_dim, hidden_dim, action_dim, num_layer, layer_norm, dropout):
@@ -66,7 +68,9 @@ class BcPolicy(nn.Module):
             self.policy.apply(utils.orth_weight_init)
 
     def forward(self, obs: dict[str, torch.Tensor]):
-        h = self.encoder(obs)
+        obs_copy = cp.deepcopy(obs)
+        obs_copy['prop'] = torch.concatenate([obs_copy['prop'][:, :9], obs_copy['prop'][:, (9 + 6):(18 + 6)], obs_copy['prop'][:, (18 + 12):(27+12)]], -1)
+        h = self.encoder(obs_copy)
         mu = self.policy(h)  # policy contains tanh
         return mu
 
@@ -92,7 +96,9 @@ class BcPolicy(nn.Module):
     def loss(self, batch):
         action = batch.action["action"]
 
+
         obs = {"prop": batch.obs["prop"]}
+        obs['prop'] = torch.concatenate([obs['prop'][:, :9], obs['prop'][:, (9 + 6):(18 + 6)], obs['prop'][:, (18 + 12):(27+12)]], -1)
         if self.cfg.use_prop and self.cfg.prop_noise > 0:
             noise = torch.zeros_like(obs["prop"])
             noise.uniform_(-self.cfg.prop_noise, self.cfg.prop_noise)

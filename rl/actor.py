@@ -99,6 +99,7 @@ class Actor(nn.Module):
         if prop_dim > 0:
             policy_in_dim += prop_dim
 
+
         self.policy = build_fc(
             policy_in_dim,
             cfg.hidden_dim,

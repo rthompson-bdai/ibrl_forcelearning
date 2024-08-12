@@ -57,8 +57,9 @@ STATE_SHAPE = {
     "ToolHang": (53,),
 }
 PROP_KEYS = ["robot0_eef_pos", "robot0_eef_quat", "robot0_gripper_qpos"]
+FORCE_PROP_KEYS = PROP_KEYS + ["robot0_ee_force", "robot0_ee_torque"]
 PROP_DIM = 9
-
+FORCE_PROP_DIM = PROP_DIM + 6
 
 class PixelRobosuite:
     def __init__(
@@ -83,8 +84,11 @@ class PixelRobosuite:
         flip_image=True,  # only false if using with eval_with_init_state
         ctrl_delta=True,
         record_sim_state: bool = False,
+        use_force: bool = False,
     ):
         assert isinstance(camera_names, list)
+        #global PROP_KEYS
+        self.use_force = use_force
         self.camera_names = camera_names
         self.ctrl_config = load_controller_config(default_controller="OSC_POSE")
         self.ctrl_config["control_delta"] = ctrl_delta
@@ -109,6 +113,10 @@ class PixelRobosuite:
         self.use_state = use_state
         self.state_keys = STATE_KEYS[env_name]
         self.prop_keys = ["robot0_eef_pos", "robot0_eef_quat", "robot0_gripper_qpos"]
+        if self.use_force:
+            self.prop_keys += ["robot0_ee_force", "robot0_ee_torque"]
+            #PROP_KEYS = FORCE_PROP_KEYS
+
         self.flip_image = flip_image
 
         self.resize_transform = None
@@ -119,6 +127,8 @@ class PixelRobosuite:
         self._observation_shape: tuple[int, ...] = (3 * obs_stack, rl_image_size, rl_image_size)
         self._state_shape: tuple[int] = (STATE_SHAPE[env_name][0] * state_stack,)
         self.prop_shape: tuple[int] = (PROP_DIM * prop_stack,)
+        if self.use_force: 
+            self.prop_shape: tuple[int] = (FORCE_PROP_DIM * prop_stack,)
         self.device = device
 
         self.time_step = 0

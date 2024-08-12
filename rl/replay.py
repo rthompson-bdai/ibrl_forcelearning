@@ -5,7 +5,7 @@ import torch
 import h5py
 import numpy as np
 
-from env.robosuite_wrapper import DEFAULT_STATE_KEYS, STATE_KEYS, PROP_KEYS
+from env.robosuite_wrapper import DEFAULT_STATE_KEYS, STATE_KEYS, PROP_KEYS, FORCE_PROP_KEYS
 from common_utils import rela
 from common_utils import ibrl_utils as utils
 
@@ -77,6 +77,8 @@ class ReplayBuffer:
     def new_episode(self, obs: dict[str, torch.Tensor]):
         self.episode_image_obs = defaultdict(list)
         self.episode.init({})
+        #print(obs['agentview'].shape)
+        #input("wait")
         self.episode.push_obs(obs)
 
     def append_obs(self, obs: dict[str, torch.Tensor]):
@@ -210,9 +212,11 @@ def add_demos_to_replay(
     for episode_id in range(num_episode):
         if num_data > 0 and episode_id >= num_data:
             break
-
-        episode_tag = f"demo_{episode_id}"
-        episode = f[f"data/{episode_tag}"]
+        try:
+            episode_tag = f"demo_{episode_id}"
+            episode = f[f"data/{episode_tag}"]
+        except KeyError as e:
+            continue
         actions = np.array(episode["actions"]).astype(np.float32)  # type: ignore
         images = {
             rl_camera: np.array(episode[f"obs/{rl_camera}_image"]) for rl_camera in rl_cameras
@@ -223,7 +227,7 @@ def add_demos_to_replay(
         if "prop" in episode["obs"]:
             props = episode["obs"]["prop"]
         else:
-            for key in PROP_KEYS:
+            for key in FORCE_PROP_KEYS:
                 robot_locs.append(episode["obs"][key])  # type: ignore
             props = np.concatenate(robot_locs, axis=1).astype(np.float32)
 
