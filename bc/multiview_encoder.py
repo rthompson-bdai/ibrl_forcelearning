@@ -78,6 +78,9 @@ class MultiViewEncoder(nn.Module):
 
         if self.use_prop:
             prop = obs["prop"]
+            #print(h.shape)
+            #print(prop.shape)
             h = torch.cat([h, prop], dim=-1)
+            #print(h.shape)
 
         return h

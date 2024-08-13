@@ -173,7 +173,7 @@ def _load_model(weight_file, env: PixelRobosuite, device, cfg: Optional[MainConf
         policy = StateBcPolicy(env.observation_shape, env.action_dim, cfg.state_policy)
     else:
         policy = BcPolicy(
-            env.observation_shape, env.prop_shape, env.action_dim, env.rl_cameras, cfg.policy
+            env.observation_shape, (27,), env.action_dim, env.rl_cameras, cfg.policy
         )
     policy.load_state_dict(torch.load(weight_file))
     return policy.to(device)
@@ -206,8 +206,9 @@ def load_model(weight_file, device, *, verbose=True):
         obs_stack=cfg.dataset.obs_stack,
         state_stack=cfg.dataset.state_stack,
         prop_stack=cfg.dataset.prop_stack,
+        #use_force = cfg.use_force
     )
-    env = PixelRobosuite(**env_params)  # type: ignore
+    env = PixelRobosuite(use_force=True, **env_params)  # type: ignore
 
     if cfg.dataset.use_state:
         print(f"state_stack: {cfg.dataset.state_stack}, observation shape: {env.observation_shape}")

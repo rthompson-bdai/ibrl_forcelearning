@@ -86,6 +86,9 @@ class PixelRobosuite:
         record_sim_state: bool = False,
         use_force: bool = False,
     ):
+
+        # print(use_force)
+        # input("is it this one")
         assert isinstance(camera_names, list)
         #global PROP_KEYS
         self.use_force = use_force

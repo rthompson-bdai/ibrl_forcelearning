@@ -67,11 +67,21 @@ class BcPolicy(nn.Module):
         if self.cfg.orth_init:
             self.policy.apply(utils.orth_weight_init)
 
+        #self.forward({'prop': torch.concatenate([torch.arange(15), torch.arange(15), torch.arange(15)]).reshape(1, -1)})
+
     def forward(self, obs: dict[str, torch.Tensor]):
         obs_copy = cp.deepcopy(obs)
         obs_copy['prop'] = torch.concatenate([obs_copy['prop'][:, :9], obs_copy['prop'][:, (9 + 6):(18 + 6)], obs_copy['prop'][:, (18 + 12):(27+12)]], -1)
+        # print(obs_copy['prop'])
+        # input("is this right?")
         h = self.encoder(obs_copy)
+        #try:
         mu = self.policy(h)  # policy contains tanh
+        # except:
+        #     print("SHAPE OF OBS")
+        #     print(obs_copy['prop'].shape)
+        #     print(obs['prop'].shape)
+        #     exit(0)
         return mu
 
     def act(self, obs: dict[str, torch.Tensor], *, eval_mode=True, cpu=True):

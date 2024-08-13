@@ -11,7 +11,7 @@ if mp.get_start_method(allow_none=True) != "spawn":
 import common_utils
 from common_utils import ibrl_utils as utils
 from env.robosuite_wrapper import PixelRobosuite
-
+from env.wrapper import ForceBinningWrapper
 
 class EvalProc:
     def __init__(self, seeds, process_id, env_params, terminal_queue: mp.Queue):
@@ -23,7 +23,8 @@ class EvalProc:
         self.recv_queue = mp.Queue()
 
     def start(self):
-        env = PixelRobosuite(**self.env_params)
+        env = PixelRobosuite(use_force=True, **self.env_params)
+        env = ForceBinningWrapper(env)
 
         results = {}
         for seed in self.seeds:

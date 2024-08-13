@@ -15,6 +15,7 @@ from env.robosuite_wrapper import PixelRobosuite
 from rl.q_agent import QAgent, QAgentConfig
 from rl import replay
 import train_bc
+from env.wrapper import ForceBinningWrapper
 
 
 @dataclass
@@ -58,15 +59,21 @@ class MainConfig(common_utils.RunConfig):
     add_bc_loss: int = 0
     # others
     env_reward_scale: float = 1
-    num_warm_up_episode: int = 50
+    num_warm_up_episode: int = 1#50
     num_eval_episode: int = 10
     save_per_success: int = -1
     mp_eval: int = 0  # eval with multiprocess
     num_train_step: int = 200000
     log_per_step: int = 5000
     # log
+    wb_exp: str = "ibrl"
+    wb_run: str = "no_force"
+    wb_group: str = "bdaii"
     save_dir: str = "exps/rl/run1"
     use_wb: int = 0
+    use_force: bool = True#False
+    binning: bool = False
+    reward_shaping: bool = False
 
     def __post_init__(self):
         self.rl_cameras = self.rl_camera.split("+")
@@ -128,7 +135,7 @@ class Workspace:
         self.train_step = 0
         self._setup_env()
 
-        print(self.train_env.observation_shape)
+        # print(self.train_env.observation_shape)
         self.agent = QAgent(
             self.cfg.use_state,
             self.train_env.observation_shape,
@@ -184,7 +191,7 @@ class Workspace:
             env_name=self.cfg.task_name,
             robots=self.cfg.robots,
             episode_length=self.cfg.episode_length,
-            reward_shaping=False,
+            reward_shaping=self.cfg.reward_shaping,#False,
             image_size=self.cfg.image_size,
             rl_image_size=self.cfg.rl_image_size,
             camera_names=self.rl_cameras,
@@ -196,6 +203,7 @@ class Workspace:
             state_stack=self.cfg.state_stack,
             prop_stack=self.prop_stack,
             record_sim_state=bool(self.cfg.save_per_success > 0),
+            use_force=bool(self.cfg.use_force)
         )
         self.eval_env_params = dict(
             env_name=self.cfg.task_name,
@@ -211,7 +219,11 @@ class Workspace:
             state_stack=self.cfg.state_stack,
             prop_stack=self.prop_stack,
         )
-        self.eval_env = PixelRobosuite(**self.eval_env_params)  # type: ignore
+        self.eval_env = PixelRobosuite(use_force = bool(self.cfg.use_force), **self.eval_env_params)  # type: ignore
+
+        if self.cfg.binning:
+            self.train_env = ForceBinningWrapper(self.train_env)
+            self.eval_env = ForceBinningWrapper(self.eval_env)
 
     def _setup_replay(self):
         use_bc = False
@@ -490,6 +502,7 @@ def load_model(weight_file, device):
 
 def main():
     cfg = pyrallis.parse(config_class=MainConfig)  # type: ignore
+
     workspace = Workspace(cfg)
     if cfg.pretrain_num_epoch > 0:
         print("Pretraining")
