@@ -10,7 +10,7 @@ import numpy as np
 
 import common_utils
 from common_utils import ibrl_utils as utils
-from evaluate import run_eval, run_eval_mp
+from evaluate import run_eval, run_eval_mp, no_force_run_eval_mp
 from env.robosuite_wrapper import PixelRobosuite
 from rl.q_agent import QAgent, QAgentConfig
 from rl import replay
@@ -71,7 +71,7 @@ class MainConfig(common_utils.RunConfig):
     wb_group: str = "bdaii"
     save_dir: str = "exps/rl/run1"
     use_wb: int = 0
-    use_force: bool = True#False
+    use_force: bool = False
     binning: bool = False
     reward_shaping: bool = False
 
@@ -258,6 +258,7 @@ class Workspace:
                 prop_stack=self.prop_stack,
                 reward_scale=self.cfg.env_reward_scale,
                 record_sim_state=bool(self.cfg.save_per_success > 0),
+                use_force=self.cfg.use_force,
             )
         if self.cfg.freeze_bc_replay:
             assert self.cfg.save_per_success <= 0, "cannot save a non-growing replay"
@@ -267,14 +268,25 @@ class Workspace:
         random_state = np.random.get_state()
 
         if self.cfg.mp_eval:
-            scores: list[float] = run_eval_mp(
-                env_params=self.eval_env_params,
-                agent=policy,
-                num_proc=10,
-                num_game=self.cfg.num_eval_episode,
-                seed=seed,
-                verbose=False,
-            )
+            if self.cfg.use_force:
+                scores: list[float] = run_eval_mp(
+                    env_params=self.eval_env_params,
+                    agent=policy,
+                    num_proc=10,
+                    num_game=self.cfg.num_eval_episode,
+                    seed=seed,
+                    verbose=False,
+                )
+            else:
+                 scores: list[float] = no_force_run_eval_mp(
+                    env_params=self.eval_env_params,
+                    agent=policy,
+                    num_proc=10,
+                    num_game=self.cfg.num_eval_episode,
+                    seed=seed,
+                    verbose=False,
+                )
+
         else:
             scores: list[float] = run_eval(
                 env_params=self.eval_env_params,
