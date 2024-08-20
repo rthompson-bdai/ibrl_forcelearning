@@ -15,8 +15,7 @@ from env.robosuite_wrapper import PixelRobosuite
 from rl.q_agent import QAgent, QAgentConfig
 from rl import replay
 import train_bc
-from env.wrapper import ForceBinningWrapper
-
+from env.wrapper import ForceBinningWrapper, ForceNormalizationWrapper, LightingWrapper
 
 @dataclass
 class MainConfig(common_utils.RunConfig):
@@ -74,6 +73,11 @@ class MainConfig(common_utils.RunConfig):
     use_force: bool = False
     binning: bool = False
     reward_shaping: bool = False
+    normalize: bool = False
+    normalize_dataset: str = ""
+
+    lighting_mod: bool = False
+    lighting_params: str = ""
 
     def __post_init__(self):
         self.rl_cameras = self.rl_camera.split("+")
@@ -224,6 +228,13 @@ class Workspace:
         if self.cfg.binning:
             self.train_env = ForceBinningWrapper(self.train_env)
             self.eval_env = ForceBinningWrapper(self.eval_env)
+        elif self.cfg.normalize: 
+            self.train_env = ForceNormalizationWrapper(self.train_env, self.cfg.normalize_dataset)
+            self.eval_env = ForceNormalizationWrapper(self.eval_env, self.cfg.normalize_dataset)
+
+        if self.cfg.lighting_mod:
+            self.train_env = LightingWrapper(self.train_env, self.cfg.lighting_params)
+            self.eval_env = LightingWrapper(self.eval_env, self.cfg.lighting_params)
 
     def _setup_replay(self):
         use_bc = False
@@ -489,7 +500,6 @@ class Workspace:
 
 def load_model(weight_file, device):
     cfg_path = os.path.join(os.path.dirname(weight_file), f"cfg.yaml")
-    print(common_utils.wrap_ruler("config of loaded agent"))
     with open(cfg_path, "r") as f:
         print(f.read(), end="")
     print(common_utils.wrap_ruler(""))
