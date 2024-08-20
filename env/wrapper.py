@@ -7,6 +7,7 @@ import numpy as np
 import torch
 from collections import deque
 import h5py
+import json
 
 from robosuite.utils.mjmod import LightingModder
 import robomimic.envs.env_base as EB
@@ -283,11 +284,18 @@ class LightingWrapper(EnvWrapper):
     def __init__(self, env, lighting_file):
         #load list of dicts from lighting json file
         super(LightingWrapper, self).__init__(env=env)
+        try:
+            self.env.env.sim
+        except AttributeError as e:
+            self.env = self.env.env
         
         if lighting_file is not None:
-            self.lighting_param_options = json.load(lighting_file)
+            with open(lighting_file) as f:
+                self.lighting_param_options = json.load(f)
         else:
             self.lighting_param_options = []
+
+        #self.lighting_param_options = [{'active': 1, 'ambient': [0.0, 0.0, 0.0], 'diffuse': [0.0, 0.0, 0.0], 'specular': [0.0, 0.0, 0.0]} ]
         self.reset()
         
 
@@ -310,15 +318,18 @@ class LightingWrapper(EnvWrapper):
         self.env.env.sim.model.vis.headlight.specular =  np.array(lighting_state['specular'])
 
     def randomize(self):
-        self.env.env.sim.model.vis.headlight.diffuse =  np.full((3,), np.random.uniform(0.2, 0.8))
-        self.env.env.sim.model.vis.headlight.ambient =  np.full((3,), np.random.uniform(0.2, 0.8))
+        light_val = np.random.uniform(0.0, 1.0)
+        self.env.env.sim.model.vis.headlight.diffuse =  np.full((3,), light_val)
+        self.env.env.sim.model.vis.headlight.ambient =  np.full((3,), light_val)
+        self.env.env.sim.model.vis.headlight.specular =  np.full((3,), light_val)
 
     def reset(self):
-        if len(self.lighting_param_options) > 0:
-            lighting_params = np.random.choice(self.lighting_param_options)
-            self.set_lighting_state(lighting_params)
         out = self.env.reset()
         self.modder = LightingModder(self.env.env.sim)
+        if len(self.lighting_param_options) > 0:
+            lighting_params = np.random.choice(self.lighting_param_options)
+            #print(lighting_params)
+            self.set_lighting_state(lighting_params)
         return out
 
     def reset_to(self, state):
@@ -327,6 +338,7 @@ class LightingWrapper(EnvWrapper):
         #lighting mod the env
         if len(self.lighting_param_options) > 0:
             lighting_params = np.random.choice(self.lighting_param_options)
+            #print(lighting_params)
             self.set_lighting_state(lighting_params)
         return out
 

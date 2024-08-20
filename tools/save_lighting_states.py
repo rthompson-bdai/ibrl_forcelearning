@@ -21,9 +21,6 @@ def save_lighting_state(env_params, filename, num_states=10):
 
     with open(filename, 'w') as fout:
         json.dump(states, fout)
-    
-
-
 
 if __name__ == "__main__":
 

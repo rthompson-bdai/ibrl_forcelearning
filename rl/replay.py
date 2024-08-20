@@ -202,6 +202,7 @@ def add_demos_to_replay(
     reward_scale: float,
     record_sim_state: bool,
     is_demo: bool = True,
+    use_force: bool = False,
 ):
     f = h5py.File(data_path)
     num_episode: int = len(list(f["data"].keys()))  # type: ignore
@@ -227,8 +228,13 @@ def add_demos_to_replay(
         if "prop" in episode["obs"]:
             props = episode["obs"]["prop"]
         else:
-            for key in FORCE_PROP_KEYS:
-                robot_locs.append(episode["obs"][key])  # type: ignore
+            if use_force:
+                for key in FORCE_PROP_KEYS:
+                    robot_locs.append(episode["obs"][key])  # type: ignore
+            else:
+                for key in PROP_KEYS:
+                    robot_locs.append(episode["obs"][key])  # type: ignore
+
             props = np.concatenate(robot_locs, axis=1).astype(np.float32)
 
         if use_state:

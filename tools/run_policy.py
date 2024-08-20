@@ -4,7 +4,7 @@ from common_utils import Recorder, Stopwatch
 from common_utils import ibrl_utils as utils
 from env.robosuite_wrapper import PixelRobosuite
 
-from env.wrapper import ForceBinningWrapper
+from env.wrapper import ForceBinningWrapper, LightingWrapper
 from robosuite.utils.mjmod import LightingModder
 
 
@@ -25,6 +25,8 @@ def run_eval(
     env = PixelRobosuite(use_force=False, **env_params)
     #env = ForceBinningWrapper(env)
 
+    env = LightingWrapper(env, "lighting_states_10.json")
+
 
     with torch.no_grad(), utils.eval_mode(agent):
         for episode_idx in range(num_game):
@@ -35,8 +37,6 @@ def run_eval(
                 obs, image_obs = env.reset()
 
 
-            light_modder = LightingModder(env.env.sim)
-            light_modder.randomize()
             terminal = False
             while not terminal:
                 if recorder is not None:

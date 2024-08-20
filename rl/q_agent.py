@@ -205,6 +205,17 @@ class QAgent(nn.Module):
                 eps_greedy=self.cfg.ibrl_eps_greedy,
                 use_target=False,
             )
+
+        elif self.cfg.act_method == "force_adjusted_ibrl":
+            action = self._act_force_adjusted_ibrl(
+                obs=obs,
+                eval_mode=eval_mode,
+                stddev=stddev,
+                clip=None,
+                eps_greedy=self.cfg.ibrl_eps_greedy,
+                use_target=False,
+            )
+
         elif self.cfg.act_method == "ibrl_soft":
             action = self._act_ibrl_soft(
                 obs=obs,
@@ -325,6 +336,70 @@ class QAgent(nn.Module):
                     self.stats["actor/bc_train"].append(use_bc, bsize)
 
         return action
+    
+    def _perturb_action(action):
+        #generate a bunch of perturbations to the aciton
+
+        max_perturbations = torch.tensor([.02, .02, .02, .1, .1, .1, 0])
+        min_perturbations = torch.tensor([.02, .02, .02, .1, .1, .1, 0])
+
+        sample_axes = torch.linspace(min_perturbations, max_perturbations, 5)
+        sample_space = torch.meshgrid(sample_axes)
+        return action + sample_space
+
+    def _force_adjusted_ibrl(
+        self,
+        *,
+        obs: dict[str, torch.Tensor],
+        eval_mode: bool,
+        stddev: float,
+        clip: Optional[float],
+        eps_greedy: float,
+        use_target: bool,
+    ) -> torch.Tensor:
+        actor = self.actor_target if use_target else self.actor
+        if eval_mode:
+            assert not actor.training
+
+        assert len(self.bc_policies) == 1
+        bc_policy = self.bc_policies[0]
+        bc_action = bc_policy.act(obs, cpu=False)
+
+        rl_dist: utils.TruncatedNormal = actor(obs, stddev)
+        if eval_mode:
+            rl_action = rl_dist.mean
+        else:
+            rl_action = rl_dist.sample(clip)
+
+        rl_bc_actions = torch.stack([rl_action, bc_action], dim=1)
+        bsize, num_action, _ = rl_bc_actions.size()
+
+        # get q(a)
+        # feat -> [batch, num_patch, patch_dim] -> [batch, num_action(2), num_patch, patch_dim]
+        flat_actions = rl_bc_actions.flatten(0, 1)
+        if isinstance(self.critic_target, Critic):
+            flat_qfeats = obs["feat"].unsqueeze(1).repeat(1, num_action, 1, 1).flatten(0, 1)
+            flat_props = obs["prop"].unsqueeze(1).repeat(1, num_action, 1).flatten(0, 1)
+            q1, q2 = self.critic_target.forward(flat_qfeats, flat_props, flat_actions)
+            qa: torch.Tensor = torch.min(q1, q2).view(bsize, num_action)
+        else:
+            state = obs["state"]
+            flat_state = state.unsqueeze(1).repeat(1, num_action, 1).flatten(0, 1)
+            qa: torch.Tensor = self.critic_target.forward_k(flat_state, flat_actions)
+            qa = qa.min(-1)[0].view(bsize, num_action)
+
+        # best_action_idx: [batch]
+        greedy_action_idx: torch.Tensor = qa.argmax(1)
+        greedy_action = rl_bc_actions[range(bsize), greedy_action_idx]
+
+        possible_action = self._perturb_action(greedy_action)
+        #get force vector and score based on that like with the diffusion thing
+        #pick the one that minimizes that score- make sure that all makes sense
+        #there's gonna have to be some kind of weighting there but see what happens
+        #do the same thing where we test and also visualize policy and policy force
+        #what we want is lower force and ideally more success, but let's see
+        #honestly should just try this with a place task
+
 
     def _act_ibrl_soft(
         self,
