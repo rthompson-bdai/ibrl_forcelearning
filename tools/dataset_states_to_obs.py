@@ -56,7 +56,7 @@ import robomimic.utils.file_utils as FileUtils
 import robomimic.utils.env_utils as EnvUtils
 from robomimic.envs.env_base import EnvBase
 
-from env.wrapper import ForceBinningWrapper
+from env.wrapper import ForceBinningWrapper, ForceNormalizationWrapper
 
 
 def extract_trajectory(
@@ -65,6 +65,7 @@ def extract_trajectory(
     states, 
     actions,
     done_mode,
+    zero_force=False,
 ):
     """
     Helper function to extract observations, rewards, and dones along a trajectory using
@@ -129,6 +130,10 @@ def extract_trajectory(
             done = done or env.is_success()["task"]
         done = int(done)
 
+        if zero_force:
+            obs['robot0_ee_force'] = np.zeros_like(obs['robot0_ee_force'])
+            obs['robot0_ee_torque'] = np.zeros_like(obs['robot0_ee_torque'])
+
         # collect transition
         traj["obs"].append(obs)
         traj["next_obs"].append(next_obs)
@@ -172,6 +177,8 @@ def dataset_states_to_obs(args):
 
     if args.binning:
         env = ForceBinningWrapper(env)
+    elif args.normalization:
+        env = ForceNormalizationWrapper(env, args.normalize_dataset)
 
     print("==== Using environment with the following metadata ====")
     print(json.dumps(env.serialize(), indent=4))
@@ -222,6 +229,7 @@ def dataset_states_to_obs(args):
             states=states, 
             actions=actions,
             done_mode=args.done_mode,
+            zero_force=args.zero_force
         )
 
         if success:
@@ -364,6 +372,24 @@ if __name__ == "__main__":
         "--binning",
         action="store_true",
         help="Use a binning wrapper when saving the forces"
+    )
+
+    parser.add_argument(
+        "--normalization",
+        action="store_true",
+        help="Use a normalization wrapper when saving the forces"
+    )
+
+    parser.add_argument(
+        "--normalize_dataset",
+        type=str,
+        help="dataset to use for normalization mean/std"
+    )
+
+    parser.add_argument(
+        "--zero_force",
+        action="store_true",
+        help="Sets all force values to zero to create a dataset useful for ibrl warmup steps"
     )
 
     # specifies how the "done" signal is written. If "0", then the "done" signal is 1 wherever 

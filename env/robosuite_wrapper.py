@@ -155,7 +155,6 @@ class PixelRobosuite:
 
     def _extract_images(self, obs):
         # assert self.frame_stack == 1, "frame stack not supported"
-
         high_res_images = {}
         rl_obs = {}
 
