@@ -16,6 +16,7 @@ def run_eval(
     record_dir=None,
     verbose=True,
     eval_mode=True,
+    lighting_wrapper=""
 ) -> list[float]:
     scores = []
     lens = []
@@ -24,8 +25,8 @@ def run_eval(
 
     env = PixelRobosuite(use_force=False, **env_params)
     #env = ForceBinningWrapper(env)
-
-    env = LightingWrapper(env, "lighting_states_10.json")
+    if lighting_wrapper != "":
+        env = LightingWrapper(env, lighting_wrapper)
 
 
     with torch.no_grad(), utils.eval_mode(agent):
@@ -102,6 +103,7 @@ if __name__ == "__main__":
     parser.add_argument("--repeat", type=int, default=1)
     parser.add_argument("--verbose", type=int, default=1)
     parser.add_argument("--seed", type=int, default=1)
+    parser.add_argument("--lighting_wrapper", type=str, default="")
 
     args = parser.parse_args()
     common_utils.set_all_seeds(args.seed)
@@ -150,6 +152,7 @@ if __name__ == "__main__":
                 args.seed,
                 args.record_dir,
                 verbose=args.verbose,
+                lighting_wrapper=args.lighting_wrapper,
             )
         all_scores.append(scores)
         print(f"weight: {weight}")
