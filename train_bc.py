@@ -40,6 +40,7 @@ class MainConfig(common_utils.RunConfig):
     save_dir: str = "exps/bc/run1"
     use_wb: int = 0
     save_per: int = -1
+    #use_force: bool = True
 
     @property
     def prop_stack(self):
@@ -192,6 +193,7 @@ def load_model(weight_file, device, *, verbose=True):
     cfg = pyrallis.load(MainConfig, open(cfg_path, "r"))  # type: ignore
 
     assert not cfg.dataset.real_data
+
     env_params = dict(
         env_name=cfg.task_name,
         robots=cfg.robots,

@@ -74,9 +74,12 @@ class RobomimicDataset:
         for episode_id in range(num_episode):
             if cfg.num_data > 0 and len(episode_lens) >= cfg.num_data:
                 break
-
-            episode_tag = f"demo_{episode_id}"
-            episode = datafile[f"data/{episode_tag}"]
+            
+            try:
+                episode_tag = f"demo_{episode_id}"
+                episode = datafile[f"data/{episode_tag}"]
+            except KeyError:
+                continue
 
             if self.cfg.real_data:
                 rewards = np.array(episode["rewards"]).astype(np.float32)  # type: ignore

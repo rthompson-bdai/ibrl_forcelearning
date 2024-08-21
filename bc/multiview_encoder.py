@@ -28,6 +28,7 @@ class MultiViewEncoder(nn.Module):
         self.rl_cameras = rl_cameras
         self.use_prop = use_prop
         self.cfg = cfg
+        self.prop_shape = prop_shape
         self.encoders = nn.ModuleList([ResNetEncoder(obs_shape, cfg.resnet) for _ in rl_cameras])
 
         enc_repr_dim: int = self.encoders[0].repr_dim  # type: ignore

@@ -56,7 +56,7 @@ import robomimic.utils.file_utils as FileUtils
 import robomimic.utils.env_utils as EnvUtils
 from robomimic.envs.env_base import EnvBase
 
-from env.wrapper import ForceBinningWrapper, ForceNormalizationWrapper
+from env.wrapper import ForceBinningWrapper, ForceNormalizationWrapper, LightingWrapper
 
 
 def extract_trajectory(
@@ -179,6 +179,9 @@ def dataset_states_to_obs(args):
         env = ForceBinningWrapper(env)
     elif args.normalization:
         env = ForceNormalizationWrapper(env, args.normalize_dataset)
+
+    if args.light_modder:
+        env = LightingWrapper(env, args.light_params)
 
     print("==== Using environment with the following metadata ====")
     print(json.dumps(env.serialize(), indent=4))
@@ -385,6 +388,21 @@ if __name__ == "__main__":
         type=str,
         help="dataset to use for normalization mean/std"
     )
+
+    parser.add_argument(
+        "--light_modder",
+        action="store_true",
+        help="Use a light wrapper to vary the image observation data"
+    )
+
+    parser.add_argument(
+        "--light_params",
+        type=str,
+        help="json file with the possible light variations"
+    )
+
+
+
 
     parser.add_argument(
         "--zero_force",

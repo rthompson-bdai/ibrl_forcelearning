@@ -71,10 +71,10 @@ class BcPolicy(nn.Module):
 
     def forward(self, obs: dict[str, torch.Tensor]):
         obs_copy = cp.deepcopy(obs)
+
         if obs['prop'].shape[1] > 27:
             obs_copy['prop'] = torch.concatenate([obs_copy['prop'][:, :9], obs_copy['prop'][:, (9 + 6):(18 + 6)], obs_copy['prop'][:, (18 + 12):(27+12)]], -1)
-        # print(obs_copy['prop'])
-        # input("is this right?")
+
         h = self.encoder(obs_copy)
         #try:
         mu = self.policy(h)  # policy contains tanh
@@ -106,19 +106,20 @@ class BcPolicy(nn.Module):
 
     def loss(self, batch):
         action = batch.action["action"]
-
-
         obs = {"prop": batch.obs["prop"]}
-        obs['prop'] = torch.concatenate([obs['prop'][:, :9], obs['prop'][:, (9 + 6):(18 + 6)], obs['prop'][:, (18 + 12):(27+12)]], -1)
+        obs_copy = cp.deepcopy(obs)
+        if obs['prop'].shape[1] > 27:
+            obs_copy['prop'] = torch.concatenate([obs_copy['prop'][:, :9], obs_copy['prop'][:, (9 + 6):(18 + 6)], obs_copy['prop'][:, (18 + 12):(27+12)]], -1)
+
         if self.cfg.use_prop and self.cfg.prop_noise > 0:
-            noise = torch.zeros_like(obs["prop"])
+            noise = torch.zeros_like(obs_copy["prop"])
             noise.uniform_(-self.cfg.prop_noise, self.cfg.prop_noise)
-            obs["prop"] = batch.obs["prop"] + noise
+            obs_copy["prop"] = batch.obs["prop"] + noise
 
         for camera in self.rl_cameras:
-            obs[camera] = self.aug(batch.obs[camera].float())
+            obs_copy[camera] = self.aug(batch.obs[camera].float())
 
-        pred_action = self.forward(obs)
+        pred_action = self.forward(obs_copy)
         loss = nn.functional.mse_loss(pred_action, action, reduction="none")
         loss = loss.sum(1).mean(0)
         return loss
