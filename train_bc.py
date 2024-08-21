@@ -208,7 +208,7 @@ def load_model(weight_file, device, *, verbose=True):
         prop_stack=cfg.dataset.prop_stack,
         #use_force = cfg.use_force
     )
-    env = PixelRobosuite(use_force=True, **env_params)  # type: ignore
+    env = PixelRobosuite(**env_params)  # type: ignore
 
     if cfg.dataset.use_state:
         print(f"state_stack: {cfg.dataset.state_stack}, observation shape: {env.observation_shape}")
