@@ -223,61 +223,63 @@ class ForceNormalizationWrapper(EnvWrapper):
         # print(np.min(force_data, 0))
         # exit(0)
 
-    # def step(self, action):
-    #     obs, r, done, info = self.env.step(action)
-    #     obs['robot0_ee_force'] = (obs['robot0_ee_force'] - self.force_mean)/self.force_std
-    #     obs['robot0_ee_torque'] = (obs['robot0_ee_torque'] - self.torque_mean)/self.torque_std
-    #     return obs, r, done, info
+    def step(self, action):
+        obs, r, done, info = self.env.step(action)
+        obs['robot0_ee_force'] = (obs['robot0_ee_force'] - self.force_mean)/self.force_std
+        obs['robot0_ee_torque'] = (obs['robot0_ee_torque'] - self.torque_mean)/self.torque_std
+        return obs, r, done, info
 
-    def step(self, actions: torch.Tensor) -> tuple[dict, float, bool, bool, dict]:
-        """
-        all inputs and outputs are tensors
-        """
-        if actions.dim() == 1:
-            actions = actions.unsqueeze(0)
-        num_action = actions.size(0)
+    # def step(self, actions: torch.Tensor) -> tuple[dict, float, bool, bool, dict]:
+    #     """
+    #     all inputs and outputs are tensors
+    #     """
+    #     # if type(actions) != torch.Tensor:
+    #     #     actions = torch.from_numpy(actions)
+    #     if actions.dim() == 1:
+    #         actions = actions.unsqueeze(0)
+    #     num_action = actions.size(0)
 
-        rl_obs = {}
-        # record the action in original format from model
-        if self.cond_action > 0:
-            for i in range(actions.size(0)):
-                self.past_actions.append(actions[i])
-            past_action = torch.stack(list(self.past_actions)).to(self.device)
-            rl_obs["past_action"] = past_action
+    #     rl_obs = {}
+    #     # record the action in original format from model
+    #     if self.cond_action > 0:
+    #         for i in range(actions.size(0)):
+    #             self.past_actions.append(actions[i])
+    #         past_action = torch.stack(list(self.past_actions)).to(self.device)
+    #         rl_obs["past_action"] = past_action
 
-        actions = actions.numpy()
+    #     actions = actions.numpy()
 
-        reward = 0
-        success = False
-        terminal = False
-        high_res_images = {}
-        for i in range(num_action):
-            self.time_step += 1
-            obs, step_reward, terminal, _ = self.env.env.step(actions[i])
-            obs['robot0_ee_force'] = (obs['robot0_ee_force'] - self.force_mean)/self.force_std
-            obs['robot0_ee_torque'] = (obs['robot0_ee_torque'] - self.torque_mean)/self.torque_std
-            # NOTE: extract images every step for potential obs stacking
-            # this is not efficient
-            curr_rl_obs, curr_high_res_images = self._extract_images(obs)
+    #     reward = 0
+    #     success = False
+    #     terminal = False
+    #     high_res_images = {}
+    #     for i in range(num_action):
+    #         self.time_step += 1
+    #         obs, step_reward, terminal, _ = self.env.env.step(actions[i])
+    #         obs['robot0_ee_force'] = (obs['robot0_ee_force'] - self.force_mean)/self.force_std
+    #         obs['robot0_ee_torque'] = (obs['robot0_ee_torque'] - self.torque_mean)/self.torque_std
+    #         # NOTE: extract images every step for potential obs stacking
+    #         # this is not efficient
+    #         curr_rl_obs, curr_high_res_images = self._extract_images(obs)
 
-            if i == num_action - 1:
-                rl_obs.update(curr_rl_obs)
-                high_res_images.update(curr_high_res_images)
+    #         if i == num_action - 1:
+    #             rl_obs.update(curr_rl_obs)
+    #             high_res_images.update(curr_high_res_images)
 
-            reward += step_reward
-            self.episode_reward += step_reward
+    #         reward += step_reward
+    #         self.episode_reward += step_reward
 
-            if step_reward == 1:
-                success = True
-                if self.end_on_success:
-                    terminal = True
+    #         if step_reward == 1:
+    #             success = True
+    #             if self.end_on_success:
+    #                 terminal = True
 
-            if terminal:
-                break
+    #         if terminal:
+    #             break
 
-        reward = reward * self.env_reward_scale
-        self.terminal = terminal
-        return rl_obs, reward, terminal, success, high_res_images
+    #     reward = reward * self.env_reward_scale
+    #     self.terminal = terminal
+    #     return rl_obs, reward, terminal, success, high_res_images
 
 
 class LightingWrapper(EnvWrapper):

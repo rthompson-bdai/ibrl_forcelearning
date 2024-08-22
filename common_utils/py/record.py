@@ -14,7 +14,7 @@ class Recorder:
         self.combined_frames = []
         self.tensors = defaultdict(list)
 
-    def add(self, camera_obses: dict[str, torch.Tensor]):
+    def add(self, camera_obses):#: dict[str, torch.Tensor]):
         combined = []
         for camera, obs in camera_obses.items():
             assert obs.dim() == 3 and obs.size(0) == 3

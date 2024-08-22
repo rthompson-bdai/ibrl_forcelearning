@@ -74,7 +74,7 @@ def to_device(data, device):
         return [to_device(v, device) for v in data]
 
 
-def get_all_files(root, file_extension, contain=None) -> list[str]:
+def get_all_files(root, file_extension, contain=None): #-> list[str]:
     files = []
     for folder, _, fs in os.walk(root):
         for f in fs:

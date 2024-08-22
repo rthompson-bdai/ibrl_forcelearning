@@ -179,7 +179,7 @@ class ResNet(nn.Module):
 
     def _make_layer(
         self,
-        block: type[BasicBlock],
+        block,#: type[BasicBlock],
         planes: int,
         blocks: int,
         stride: int = 1,

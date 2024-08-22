@@ -15,13 +15,13 @@ class ResNet96EncoderConfig:
 
 
 class ResNet96Encoder(nn.Module):
-    def __init__(self, obs_shape: list[int], cfg: ResNet96EncoderConfig):
+    def __init__(self, obs_shape, cfg):
         super().__init__()
 
         self.resnet = ResNet96(obs_shape[0], cfg.use_1x1, cfg.shallow)
         self.repr_dim, self.num_patch, self.patch_repr_dim = self._get_repr_dim(obs_shape)
 
-    def _get_repr_dim(self, obs_shape: list[int]):
+    def _get_repr_dim(self, obs_shape):
         x = torch.rand(1, *obs_shape)
         y = self.resnet.forward(x).flatten(2, 3)
         repr_dim = y.flatten().size(0)
@@ -57,7 +57,7 @@ class VitEncoderConfig:
 
 
 class VitEncoder(nn.Module):
-    def __init__(self, obs_shape: list[int], cfg: VitEncoderConfig):
+    def __init__(self, obs_shape, cfg):
         super().__init__()
         self.obs_shape = obs_shape
         self.cfg = cfg
@@ -91,7 +91,7 @@ class ResNetEncoderConfig:
 
 
 class ResNetEncoder(nn.Module):
-    def __init__(self, obs_shape, cfg: ResNetEncoderConfig):
+    def __init__(self, obs_shape, cfg):
         super().__init__()
         self.obs_shape = obs_shape
         self.cfg = cfg
@@ -105,7 +105,7 @@ class ResNetEncoder(nn.Module):
         )
         self.repr_dim, self.num_patch, self.patch_repr_dim = self._get_repr_dim(obs_shape)
 
-    def _get_repr_dim(self, obs_shape: list[int]):
+    def _get_repr_dim(self, obs_shape):
         x = torch.rand(1, *obs_shape)
         y = self.nets.forward(x).flatten(2, 3)
         repr_dim = y.flatten().size(0)

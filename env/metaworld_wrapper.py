@@ -13,6 +13,8 @@ except Exception as e:
     print("========================================")
 
 
+from envs.env_dict import ALL_V2_ENVIRONMENTS_GOAL_HIDDEN, ALL_V2_ENVIRONMENTS_GOAL_OBSERVABLE
+
 GOOD_CAMERAS = {
     "Assembly": ["corner2"],
     "Basketball": ["corner2"],
@@ -22,6 +24,25 @@ GOOD_CAMERAS = {
     "StickPull": ["corner2"],
     "PegInsertSide": ["corner2"],
     "Soccer": ["corner2"],
+    "button-press": ["corner2"],
+    "pick-place": ["corner2"],
+    "bin-picking": ["corner2"],
+    "button-press-topdown": ["corner2"], 
+    "button-press-topdown-wall": ["corner2"], 
+    "door-lock": ["corner2"], 
+    "door-open": ["corner2"],
+    "door-unlock": ["corner2"],
+    "drawer-close": ["corner2"],
+    "drawer-open": ["corner2"],
+    "faucet-close": ["corner2"],
+    "faucet-open": ["corner2"],
+    "handle-press": ["corner2"], 
+    "handle-pull": ["corner2"],
+    "handle-pull-side": ["corner2"],
+    "lever-pull": ["corner2"],
+    "window-close": ["corner2"], 
+    "window-open": ["corner2"],
+
 }
 DEFAULT_CAMERA = "corner2"
 
@@ -37,6 +58,24 @@ STATE_IDXS = {
     "StickPull": list(range(39)),
     "PegInsertSide": list(range(39)),
     "Soccer": list(range(39)),
+    "button-press": list(range(39)),
+    "pick-place": list(range(39)),
+    "bin-picking": list(range(39)),
+    "button-press-topdown": list(range(39)), 
+    "button-press-topdown-wall": list(range(39)), 
+    "door-lock": list(range(39)), 
+    "door-open": list(range(39)),
+    "door-unlock": list(range(39)),
+    "drawer-close": list(range(39)),
+    "drawer-open": list(range(39)),
+    "faucet-close": list(range(39)),
+    "faucet-open": list(range(39)),
+    "handle-press": list(range(39)), 
+    "handle-pull": list(range(39)),
+    "handle-pull-side": list(range(39)),
+    "lever-pull": list(range(39)),
+    "window-close": list(range(39)), 
+    "window-open": list(range(39)),
 }
 STATE_SHAPE = {env_name: (len(STATE_IDXS[env_name]),) for env_name in STATE_IDXS.keys()}
 
@@ -56,6 +95,24 @@ PROP_IDXS = {
     "HandInsert": list(range(4)),
     "PegInsertSide": list(range(4)),
     "Soccer": list(range(4)),
+    "button-press": list(range(4)),
+    "pick-place": list(range(4)),
+    "bin-picking": list(range(4)),
+    "button-press-topdown": list(range(4)), 
+    "button-press-topdown-wall": list(range(4)), 
+    "door-lock": list(range(4)), 
+    "door-open": list(range(4)),
+    "door-unlock": list(range(4)),
+    "drawer-close": list(range(4)),
+    "drawer-open": list(range(4)),
+    "faucet-close": list(range(4)),
+    "faucet-open": list(range(4)),
+    "handle-press": list(range(4)), 
+    "handle-pull": list(range(4)),
+    "handle-pull-side": list(range(4)),
+    "lever-pull": list(range(4)),
+    "window-close": list(range(4)), 
+    "window-open": list(range(4)),
 }
 PROP_SHAPE = {env_name: (len(PROP_IDXS[env_name]),) for env_name in STATE_IDXS.keys()}
 
@@ -80,7 +137,8 @@ class MetaWorldEnv(gym.Env):
         env_id = f"{env_id}-v2-goal-observable"
         # for x in metaworld.envs.ALL_V2_ENVIRONMENTS_GOAL_OBSERVABLE:
         #     print(x)
-        env_cls = metaworld.envs.ALL_V2_ENVIRONMENTS_GOAL_OBSERVABLE[env_id]
+        print(dir(metaworld))
+        env_cls = ALL_V2_ENVIRONMENTS_GOAL_OBSERVABLE[env_id] #metaworld.envs.ALL_V2_ENVIRONMENTS_GOAL_OBSERVABLE[env_id]
         self.env = env_cls()
 
         # Ensures that every time `reset` is called, the goal position is randomized
@@ -91,6 +149,11 @@ class MetaWorldEnv(gym.Env):
         self.heuristic_policy = vars(metaworld.policies)[policy_name]()
 
         # Redefine corner2 camera to be zoomed in, as in Seo et al. 2022 and Hansen et al. 2022
+        # print(dir(self.env.model.camera))
+        # print(self.env.model.names)
+        # #print(dir(self.env.model))
+        # print()
+        # input("??")
         index = self.env.model.camera_name2id("corner2")
         # self.env.model.cam_fovy[index] = 22  # FOV
         # self.env.model.cam_pos[index][0] = 1.5  # X
@@ -110,17 +173,19 @@ class MetaWorldEnv(gym.Env):
     def reset(self, **kwargs):
         self.env.reset(**kwargs)
         obs, _, _, _ = self.env.step(np.zeros_like(self.env.action_space.sample()))
-        obs = np.take(obs, STATE_IDXS[self.env_name])
+        # print(obs)
+        # print(STATE_IDXS[self.env_name])
+        obs = np.take(obs['proprio'], STATE_IDXS[self.env_name])
         return dict(state=obs)
 
     def step(self, action):
         obs, reward, done, info = self.env.step(action)
-        obs = dict(state=obs)
+        obs = dict(state=obs['proprio'])
         return obs, reward, done, info
 
     def get_heuristic_action(self, clip_action=True):
         state_obs = self.env._get_obs()
-        action = self.heuristic_policy.get_action(state_obs)
+        action = self.heuristic_policy.get_action(state_obs['proprio'])
         if clip_action:
             action = action.clip(-1, 1)
         return action
@@ -151,9 +216,28 @@ class ProprioObsWrapper(gym.Wrapper):
     def __init__(self, env, idx_list):
         super().__init__(env)
         self.idx_list = idx_list
+        self.model = self.env.env.env.model
+        self.data = self.env.env.env.data
+
+    def _get_force_data(self):
+        sensor_idx = np.sum(self.model.sensor_dim[: self.model.sensor_name2id("force_ee")])
+        sensor_dim = self.model.sensor_dim[self.model.sensor_name2id("force_ee")]
+        force_data = np.array(self.data.sensordata[sensor_idx : sensor_idx + sensor_dim])
+
+        sensor_idx = np.sum(self.model.sensor_dim[: self.model.sensor_name2id("torque_ee")])
+        sensor_dim = self.model.sensor_dim[self.model.sensor_name2id("torque_ee")]
+        torque_data = np.array(self.data.sensordata[sensor_idx : sensor_idx + sensor_dim])
+
+        return np.concatenate([force_data, torque_data], axis=0)
 
     def _modify_observation(self, obs):
-        obs["prop"] = np.take(obs["state"], self.idx_list)
+        # #print(self._get_force_data().shape)
+        # print(obs)
+        # print(self.idx_list)
+        # input("?")
+        # print(np.take(obs["state"], self.idx_list))
+        obs["prop"] = np.concatenate([np.take(obs["state"], self.idx_list), self._get_force_data()], axis=0)
+       
 
     def reset(self):
         obs = self.env.reset()
@@ -339,14 +423,14 @@ class PixelMetaWorld:
         self.camera_names = camera_names
 
         # Make a state-only environment
-        self.env = MetaWorldEnv(
+        self.base_env = MetaWorldEnv(
             env_name=env_name,
             camera_name=camera_names[0],
             width=rl_image_size,
             height=rl_image_size,
         )
         # For every outer call to step, make multiple inner calls to step
-        self.env = ActionRepeatWrapper(env=self.env, num_repeats=action_repeat)
+        self.env = ActionRepeatWrapper(env=self.base_env, num_repeats=action_repeat)
         # Add a key `prop` to the observation with proprioceptive dimensions
         self.env = ProprioObsWrapper(env=self.env, idx_list=PROP_IDXS[env_name])
         # Add keys to the observation with each camera rendering
@@ -445,7 +529,10 @@ class PixelMetaWorld:
 
         return rl_obs, image_obs
 
+        
+
     def step(self, action):
+        
         self.time_step += 1
         obs, reward, terminal, info = self.env.step(action)
         self.most_recent_info = info
