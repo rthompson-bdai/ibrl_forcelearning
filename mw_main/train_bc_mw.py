@@ -23,12 +23,33 @@ Batch = namedtuple("Batch", ["obs", "action"])
 
 
 root = os.path.dirname(os.path.dirname(__file__))
-DATASETS = {
-    "Assembly": "data/metaworld/Assembly_frame_stack_1_96x96_end_on_success/dataset.hdf5",
-    "BoxClose": "data/metaworld/BoxClose_frame_stack_1_96x96_end_on_success/dataset.hdf5",
-    "StickPull": "data/metaworld/StickPull_frame_stack_1_96x96_end_on_success/dataset.hdf5",
-    "CoffeePush": "data/metaworld/CoffeePush_frame_stack_1_96x96_end_on_success/dataset.hdf5",
-}
+env_names= [
+    "Assembly",
+    "BoxClose",
+    "StickPull",
+    "CoffeePush",
+    "button-press",
+    "pick-place",
+    "bin-picking",
+    "button-press-topdown",
+    "button-press-topdown-wall",
+    "door-lock",
+    "door-open",
+    "door-unlock",
+    "drawer-close",
+    "drawer-open",
+    "faucet-close",
+    "faucet-open",
+    "handle-press",
+    "handle-pull",
+    "handle-pull-side",
+    "lever-pull",
+    "window-close",
+    "window-open"]
+
+DATASETS = {name: f"data/metaworld/{name}_frame_stack_1_96x96_end_on_success/dataset.hdf5" for name in env_names}
+
+
 for k, v in DATASETS.items():
     DATASETS[k] = os.path.join(root, v)
 
@@ -168,7 +189,7 @@ class MetaWorldDataset:
         ret = Batch(obs=batch, action=action)
         return ret
 
-    def _sample_default(self, batchsize) -> dict[str, list[torch.Tensor]]:
+    def _sample_default(self, batchsize):# -> dict[str, list[torch.Tensor]]:
         indices = np.random.choice(len(self.idx2entry), batchsize)
         batch = defaultdict(list)
         for idx in indices:
@@ -200,6 +221,8 @@ class MainConfig(common_utils.RunConfig):
     rl_image_size: int = -1
     # log
     use_wb: int = 0
+    wb_exp: str = 'metaworld_bc'
+    wb_run: str = 'debug'
     save_dir: str = "exps/bc/metaworld/run"
 
 

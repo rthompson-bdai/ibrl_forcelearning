@@ -49,14 +49,14 @@ class BcPolicy(nn.Module):
         if self.cfg.orth_init:
             self.policy.apply(utils.orth_weight_init)
 
-    def forward(self, obs: dict[str, torch.Tensor]):
+    def forward(self, obs):
         h = self.encoder(obs["obs"])
         assert not self.cfg.use_prop
         mu = self.policy(h)
         mu = torch.tanh(mu)
         return mu
 
-    def act(self, obs: dict[str, torch.Tensor], *, eval_mode=True, cpu=True):
+    def act(self, obs, *, eval_mode=True, cpu=True):
         assert eval_mode
         assert not self.training
 

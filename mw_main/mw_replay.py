@@ -171,6 +171,7 @@ def add_demos_to_replay(
     num_episode: int = len(list(f["data"].keys()))  # type: ignore
     print(f"loading first {num_data} episodes from {data_path}")
     print(f"Raw Dataset size (#episode): {num_episode}")
+
     for episode_id in range(num_episode):
         if num_data > 0 and episode_id >= num_data:
             break
@@ -188,7 +189,7 @@ def add_demos_to_replay(
             if i < episode_len:
                 obs = {
                     "obs": torch.from_numpy(images[i]),
-                    "prop": torch.zeros(4),
+                    "prop": torch.zeros(10),
                 }
 
             if i == 0:

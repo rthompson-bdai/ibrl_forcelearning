@@ -17,16 +17,19 @@ import mw_replay
 import train_bc_mw
 from eval_mw import run_eval
 
+from envs.env_dict import ALL_V2_ENVIRONMENTS_GOAL_HIDDEN, ALL_V2_ENVIRONMENTS_GOAL_OBSERVABLE
+from envs.factors.utils import make_env_with_factors
+
 
 BC_POLICIES = {
-    "assembly": "release/model/metaworld/pathAssembly_num_data3_num_epoch2_seed1/model1.pt",
+    "assembly": "mw_main/exps/bc/metaworld/run/model1.pt", #"release/model/metaworld/pathAssembly_num_data3_num_epoch2_seed1/model1.pt",
     "boxclose": "release/model/metaworld/pathBoxClose_num_data3_num_epoch2_seed1/model1.pt",
     "coffeepush": "release/model/metaworld/pathCoffeePush_num_data3_num_epoch2_seed1/model1.pt",
     "stickpull": "release/model/metaworld/pathStickPull_num_data3_num_epoch2_seed1/model1.pt",
 }
 
 BC_DATASETS = {
-    "assembly": "release/data/metaworld/Assembly_frame_stack_1_96x96_end_on_success/dataset.hdf5",
+    "assembly": "data/metaworld/Assembly_frame_stack_1_96x96_end_on_success/dataset.hdf5",
     "boxclose": "release/data/metaworld/BoxClose_frame_stack_1_96x96_end_on_success/dataset.hdf5",
     "coffeepush": "release/data/metaworld/CoffeePush_frame_stack_1_96x96_end_on_success/dataset.hdf5",
     "stickpull": "release/data/metaworld/StickPull_frame_stack_1_96x96_end_on_success/dataset.hdf5",
@@ -113,11 +116,11 @@ class Workspace:
         self.num_success = 0
         self._setup_env()
 
-        assert not cfg.q_agent.use_prop, "not implemented"
+        #assert not cfg.q_agent.use_prop, "not implemented"
         self.agent = QAgent(
             False,
             self.train_env.observation_shape,
-            (4,),  # prop shape, does not matter as we do not use prop in metaworld
+            (10,),  # prop shape, does not matter as we do not use prop in metaworld
             self.train_env.num_action,
             rl_camera="obs",
             cfg=cfg.q_agent,
@@ -237,6 +240,7 @@ class Workspace:
         obs, _ = self.train_env.reset()
         self.replay.new_episode(obs)
         while self.global_step < self.cfg.num_train_step:
+            obs['prop'] = obs['prop'].float()
             ### act ###
             with stopwatch.time("act"), torch.no_grad(), utils.eval_mode(self.agent):
                 stddev = utils.schedule(self.cfg.stddev_schedule, self.global_step)

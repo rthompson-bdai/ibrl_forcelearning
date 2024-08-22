@@ -31,6 +31,7 @@ def run_eval(
                 if recorder is not None:
                     recorder.add(image_obs)
 
+                obs['prop'] = obs['prop'].float()
                 action = agent.act(obs, eval_mode=eval_mode).numpy()
                 obs, reward, terminal, _, image_obs = env.step(action)
                 rewards.append(reward)
