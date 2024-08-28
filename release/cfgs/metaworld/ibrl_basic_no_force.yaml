@@ -2,7 +2,7 @@ episode_length: 100
 stddev_max: 0.1
 preload_num_data: 10
 env_reward_scale: 1
-num_train_step: 100000
+num_train_step: 50000
 replay_buffer_size: 500
 use_wb: 1
 use_force: False
