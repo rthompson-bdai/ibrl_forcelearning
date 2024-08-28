@@ -1,17 +1,16 @@
 #!/bin/bash
 
-envs=("Assembly" \
+envs=( #"Assembly" \
     "Basketball" \
-    "CoffeePush" \
-    "BoxClose" \
-    "StickPull" \
-    "StickPull" \
-    "PegInsertSide" \
-    "Soccer" \
-    "button-press" \
-    "pick-place" \
-    "bin-picking" \
-    "button-press-topdown" \
+    # "CoffeePush" \
+    # "BoxClose" \
+    # "StickPull" \
+    # "PegInsertSide" \
+    # "Soccer" \
+    # "button-press" \
+    # "pick-place" \
+    # "bin-picking" \
+    # "button-press-topdown" \
     "button-press-topdown-wall" \
     "door-lock" \
     "door-open" \
@@ -22,7 +21,7 @@ envs=("Assembly" \
     "faucet-open" \
     "handle-press" \
     "handle-pull" \
-    "handle-pull_side" \
+    "handle-pull-side" \
     "lever-pull" \
     "window-close" \
     "window-open")

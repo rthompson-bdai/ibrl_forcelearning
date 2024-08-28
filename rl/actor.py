@@ -112,7 +112,7 @@ class Actor(nn.Module):
             self.compress.apply(utils.orth_weight_init)
             self.policy.apply(utils.orth_weight_init)
 
-    def forward(self, obs: dict[str, torch.Tensor], std: float):
+    def forward(self, obs, std):
         if isinstance(self.compress, SpatialEmb):
             feat = self.compress.forward(obs["feat"], obs["prop"])
         else:
@@ -154,7 +154,7 @@ class FcActor(nn.Module):
         if cfg.orth:
             self.net.apply(utils.orth_weight_init)
 
-    def forward(self, obs: dict[str, torch.Tensor], std):
+    def forward(self, obs, std):
         mu = self.net(obs["state"])
         return utils.TruncatedNormal(mu, std)
 

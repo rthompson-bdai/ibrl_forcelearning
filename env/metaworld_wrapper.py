@@ -1,19 +1,30 @@
 import re
+import sys
 import torch
 import numpy as np
 import collections
+import h5py
+
 
 try:
     import gym
     import metaworld
     import metaworld.policies
+    from envs.env_dict import ALL_V2_ENVIRONMENTS_GOAL_HIDDEN, ALL_V2_ENVIRONMENTS_GOAL_OBSERVABLE
+    from wrappers import make_env_with_factors
+
 except Exception as e:
+    sys.path.append('/workspaces/bdai/projects/foundation_models/src/force_learning/factor-world_forcelearning')
+    import gym
+    import metaworld
+    import metaworld.policies
+    from envs.env_dict import ALL_V2_ENVIRONMENTS_GOAL_HIDDEN, ALL_V2_ENVIRONMENTS_GOAL_OBSERVABLE
+    from wrappers import make_env_with_factors
+
     print("warning: failed to import metaworld")
     print("========================================", e)
     print("========================================")
 
-
-from envs.env_dict import ALL_V2_ENVIRONMENTS_GOAL_HIDDEN, ALL_V2_ENVIRONMENTS_GOAL_OBSERVABLE
 
 GOOD_CAMERAS = {
     "Assembly": ["corner2"],
@@ -129,6 +140,9 @@ class MetaWorldEnv(gym.Env):
         camera_name,
         width,
         height,
+        env_kwargs = {},
+        factor_kwargs = None,
+        use_train_xml = True,
     ):
         self.env_name = env_name
 
@@ -137,9 +151,20 @@ class MetaWorldEnv(gym.Env):
         env_id = f"{env_id}-v2-goal-observable"
         # for x in metaworld.envs.ALL_V2_ENVIRONMENTS_GOAL_OBSERVABLE:
         #     print(x)
-        print(dir(metaworld))
+
         env_cls = ALL_V2_ENVIRONMENTS_GOAL_OBSERVABLE[env_id] #metaworld.envs.ALL_V2_ENVIRONMENTS_GOAL_OBSERVABLE[env_id]
-        self.env = env_cls()
+
+        if 'camera_pos' in list(factor_kwargs.keys()):
+            env_kwargs['camera_name'] = "movable"
+        #env_kwargs['random_init'] = True
+
+        self.env = make_env_with_factors(
+            env_cls, env_kwargs,
+            factor_kwargs,
+            use_train_xml,
+        )
+
+        #self.env = env_cls()
 
         # Ensures that every time `reset` is called, the goal position is randomized
         self.env._freeze_rand_vec = False
@@ -213,11 +238,39 @@ class ProprioObsWrapper(gym.Wrapper):
     for the proprioceptive state
     """
 
-    def __init__(self, env, idx_list):
+    def __init__(self, env, idx_list, use_force, norm=False, norm_dataset=None):
         super().__init__(env)
         self.idx_list = idx_list
         self.model = self.env.env.env.model
         self.data = self.env.env.env.data
+        self.use_force = use_force
+        self.norm = norm
+
+        if self.use_force and self.norm:
+            assert norm_dataset is not None
+            f = h5py.File(norm_dataset, "r")
+            demos = list(f["data"].keys())
+            inds = np.argsort([int(elem[5:]) for elem in demos])
+            demos = [demos[i] for i in inds]
+            force_data  = []
+            torque_data = []
+            for demo_name in demos:
+                demo = f["data/{}/obs".format(demo_name)]
+                force_data.append(demo['prop'][:, -6:-3])
+                torque_data.append(demo['prop'][:, -3:])
+
+            force_data = np.concatenate(force_data, 0)
+            torque_data = np.concatenate(torque_data, 0)
+            self.force_mean = np.mean(force_data, axis=0)
+            self.torque_mean = np.mean(torque_data, axis=0)
+            self.force_std= np.std(force_data, axis=0)
+            self.torque_std = np.std(torque_data, axis=0)
+        else: 
+            self.force_mean = np.array([0,0,0])
+            self.torque_mean = np.array([0,0,0])
+            self.force_std= np.array([1,1,1])
+            self.torque_std = np.array([1,1,1])
+
 
     def _get_force_data(self):
         sensor_idx = np.sum(self.model.sensor_dim[: self.model.sensor_name2id("force_ee")])
@@ -228,15 +281,14 @@ class ProprioObsWrapper(gym.Wrapper):
         sensor_dim = self.model.sensor_dim[self.model.sensor_name2id("torque_ee")]
         torque_data = np.array(self.data.sensordata[sensor_idx : sensor_idx + sensor_dim])
 
-        return np.concatenate([force_data, torque_data], axis=0)
+        return np.concatenate([(force_data - self.force_mean)/self.force_std, \
+                               (torque_data - self.torque_mean)/self.torque_std], axis=0)
 
     def _modify_observation(self, obs):
-        # #print(self._get_force_data().shape)
-        # print(obs)
-        # print(self.idx_list)
-        # input("?")
-        # print(np.take(obs["state"], self.idx_list))
-        obs["prop"] = np.concatenate([np.take(obs["state"], self.idx_list), self._get_force_data()], axis=0)
+        if not self.use_force:
+            obs["prop"] = np.take(obs["state"], self.idx_list)
+        else:
+            obs["prop"] = np.concatenate([np.take(obs["state"], self.idx_list), self._get_force_data()], axis=0)
        
 
     def reset(self):
@@ -265,6 +317,8 @@ class ImageObsWrapper(gym.Wrapper):
             image_key = f"{camera_name}_image"
             img = self.env.render(camera_name=camera_name)
             obs[image_key] = img.transpose(2, 0, 1)
+            if camera_name == "movable":
+                obs[image_key] = np.flip(obs[image_key], 1)
 
     def reset(self):
         obs = self.env.reset()
@@ -415,6 +469,11 @@ class PixelMetaWorld:
         env_reward_scale=1.0,
         end_on_success=True,
         use_state=False,
+        use_force = True,
+        norm=False, 
+        norm_dataset=None,
+        env_kwargs={}, 
+        factor_kwargs={},
     ):
         assert robots == None or robots == [] or robots == "Sawyer" or robots == ["Sawyer"]
         assert reward_shaping == False, "reward_shaping is not a supported argument"
@@ -422,19 +481,25 @@ class PixelMetaWorld:
         assert isinstance(camera_names, list)
         self.camera_names = camera_names
 
+        if 'camera_pos' in list(factor_kwargs.keys()):
+            self.camera_names = ["movable"]
+            rl_camera = "movable"
+
         # Make a state-only environment
         self.base_env = MetaWorldEnv(
             env_name=env_name,
-            camera_name=camera_names[0],
+            camera_name=self.camera_names[0],
             width=rl_image_size,
             height=rl_image_size,
+            env_kwargs=env_kwargs,
+            factor_kwargs=factor_kwargs,
         )
         # For every outer call to step, make multiple inner calls to step
         self.env = ActionRepeatWrapper(env=self.base_env, num_repeats=action_repeat)
         # Add a key `prop` to the observation with proprioceptive dimensions
-        self.env = ProprioObsWrapper(env=self.env, idx_list=PROP_IDXS[env_name])
+        self.env = ProprioObsWrapper(env=self.env, idx_list=PROP_IDXS[env_name], use_force=use_force, norm=norm, norm_dataset=norm_dataset)
         # Add keys to the observation with each camera rendering
-        self.env = ImageObsWrapper(env=self.env, camera_names=camera_names)
+        self.env = ImageObsWrapper(env=self.env, camera_names=self.camera_names)
         # Add observation stacking for specified number of steps
         self.env = StackObsWrapper(env=self.env, obs_stack=obs_stack, frame_stack=frame_stack)
         # Overwrite environment rewards with sparse rewards
@@ -490,6 +555,7 @@ class PixelMetaWorld:
         all_image_obs = {}
         for camera_name in self.camera_names:
             image_key = f"{camera_name}_image"
+            #print(obs.keys())
             image_obs = torch.from_numpy(obs[image_key].copy())
 
             # keep the high-res version for rendering

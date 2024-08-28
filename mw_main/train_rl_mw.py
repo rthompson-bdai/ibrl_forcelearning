@@ -21,19 +21,63 @@ from envs.env_dict import ALL_V2_ENVIRONMENTS_GOAL_HIDDEN, ALL_V2_ENVIRONMENTS_G
 from envs.factors.utils import make_env_with_factors
 
 
-BC_POLICIES = {
-    "assembly": "mw_main/exps/bc/metaworld/run/model1.pt", #"release/model/metaworld/pathAssembly_num_data3_num_epoch2_seed1/model1.pt",
-    "boxclose": "release/model/metaworld/pathBoxClose_num_data3_num_epoch2_seed1/model1.pt",
-    "coffeepush": "release/model/metaworld/pathCoffeePush_num_data3_num_epoch2_seed1/model1.pt",
-    "stickpull": "release/model/metaworld/pathStickPull_num_data3_num_epoch2_seed1/model1.pt",
-}
+env_names= [
+    "Assembly",
+    "Basketball",
+    "BoxClose",
+    "StickPull",
+    "CoffeePush",
+    "button-press",
+    "pick-place",
+    "bin-picking",
+    "button-press-topdown",
+    "button-press-topdown-wall",
+    "door-lock",
+    "door-open",
+    "door-unlock",
+    "drawer-close",
+    "drawer-open",
+    "faucet-close",
+    "faucet-open",
+    "handle-press",
+    "handle-pull",
+    "handle-pull-side",
+    "lever-pull",
+    "window-close",
+    "window-open"]
 
-BC_DATASETS = {
-    "assembly": "data/metaworld/Assembly_frame_stack_1_96x96_end_on_success/dataset.hdf5",
-    "boxclose": "release/data/metaworld/BoxClose_frame_stack_1_96x96_end_on_success/dataset.hdf5",
-    "coffeepush": "release/data/metaworld/CoffeePush_frame_stack_1_96x96_end_on_success/dataset.hdf5",
-    "stickpull": "release/data/metaworld/StickPull_frame_stack_1_96x96_end_on_success/dataset.hdf5",
-}
+factors=[
+    "arm_pos",
+    "camera_pos",
+    "distractor_pos",
+    "floor_texture",
+    "object_pos",
+    "object_texture",
+    "table_pos",
+    "table_texture",
+]
+
+BC_DATASETS = {name: f"bc_data/metaworld/{name}_frame_stack_1_96x96_end_on_success/dataset.hdf5" for name in env_names}
+BC_DATASETS.update({f"{name}_{factor}": f"bc_data/metaworld/{name}_{factor}_frame_stack_1_96x96_end_on_success/dataset.hdf5" for name in env_names for factor in factors})
+
+BC_POLICIES = {name: f"models/metaworld/{name}_frame_stack_1_96x96_end_on_success/dataset.hdf5" for name in env_names}
+BC_POLICIES.update({f"{name}_{factor}": f"models/metaworld/{name}_{factor}/model1.pt" for name in env_names for factor in factors})
+
+
+
+# BC_POLICIES = {
+#     "assembly": "mw_main/exps/bc/metaworld/run/model1.pt", #"release/model/metaworld/pathAssembly_num_data3_num_epoch2_seed1/model1.pt",
+#     "boxclose": "release/model/metaworld/pathBoxClose_num_data3_num_epoch2_seed1/model1.pt",
+#     "coffeepush": "release/model/metaworld/pathCoffeePush_num_data3_num_epoch2_seed1/model1.pt",
+#     "stickpull": "release/model/metaworld/pathStickPull_num_data3_num_epoch2_seed1/model1.pt",
+# }
+
+# BC_DATASETS = {
+#     "assembly": "data/metaworld/Assembly_frame_stack_1_96x96_end_on_success/dataset.hdf5",
+#     "boxclose": "release/data/metaworld/BoxClose_frame_stack_1_96x96_end_on_success/dataset.hdf5",
+#     "coffeepush": "release/data/metaworld/CoffeePush_frame_stack_1_96x96_end_on_success/dataset.hdf5",
+#     "stickpull": "release/data/metaworld/StickPull_frame_stack_1_96x96_end_on_success/dataset.hdf5",
+# }
 
 
 @dataclass
@@ -54,6 +98,9 @@ class MainConfig(common_utils.RunConfig):
     update_freq: int = 2
     bc_policy: str = ""
     use_bc: int = 1
+    use_force: bool = True
+    norm: bool = False
+    norm_dataset: str = None
     # load demo
     mix_rl_rate: float = 1  # 1: only use rl, <1, mix in some bc data
     preload_num_data: int = 0
@@ -70,7 +117,10 @@ class MainConfig(common_utils.RunConfig):
     add_bc_loss: int = 0
     # log
     use_wb: int = 0
+    wb_exp: str = 'metaworld_rl'
+    wb_run: str = 'debug'
     save_dir: str = "exps/rl/metaworld/run1"
+    
 
     def __post_init__(self):
         self.preload_datapath = self.bc_policy
@@ -98,6 +148,8 @@ class Workspace:
 
         self.cfg = cfg
         self.cfg_dict = yaml.safe_load(open(cfg.cfg_path, "r"))
+        if self.cfg.norm:
+            self.cfg.norm_dataset = BC_DATASETS[cfg.bc_policy]
 
         # we need bc policy to construct the environment :(, hack!
         assert cfg.bc_policy != "", "bc policy must be set to find the correct env config"
@@ -116,11 +168,16 @@ class Workspace:
         self.num_success = 0
         self._setup_env()
 
+        if self.cfg.use_force:
+            prop_dim = 10
+        else:
+            prop_dim = 4
+
         #assert not cfg.q_agent.use_prop, "not implemented"
         self.agent = QAgent(
             False,
             self.train_env.observation_shape,
-            (10,),  # prop shape, does not matter as we do not use prop in metaworld
+            (prop_dim,), 
             self.train_env.num_action,
             rl_camera="obs",
             cfg=cfg.q_agent,
@@ -141,6 +198,8 @@ class Workspace:
             self.env_params["end_on_success"] = True
         self.env_params["episode_length"] = self.cfg.episode_length
         self.env_params["env_reward_scale"] = self.cfg.env_reward_scale
+        self.env_params["use_force"] = self.cfg.use_force
+
         self.train_env = PixelMetaWorld(**self.env_params)  # type: ignore
 
         eval_env_params = self.env_params.copy()
@@ -149,6 +208,12 @@ class Workspace:
 
     def _setup_replay(self):
         use_bc = (self.cfg.mix_rl_rate < 1) or self.cfg.add_bc_loss
+
+        if self.cfg.use_force:
+            prop_dim = 10
+        else:
+            prop_dim = 4
+
         assert self.env_params["frame_stack"] == 1
         self.replay = mw_replay.ReplayBuffer(
             self.cfg.nstep,
@@ -167,6 +232,7 @@ class Workspace:
                 use_state=self.env_params["use_state"],
                 obs_stack=self.env_params["obs_stack"],
                 reward_scale=self.cfg.env_reward_scale,
+                prop_dim=prop_dim,
             )
             self.replay.freeze_bc_replay = True
 
@@ -356,7 +422,6 @@ class Workspace:
             stat.summary(epoch, reset=True)
             print(f"saved?: {saved}")
             print(common_utils.get_mem_usage())
-
 
 def main(cfg: MainConfig):
     workspace = Workspace(cfg)

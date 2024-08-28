@@ -12,6 +12,7 @@ import h5py
 from PIL import Image
 from copy import copy
 from env.metaworld_wrapper import PixelMetaWorld
+import yaml
 
 
 """
@@ -37,24 +38,37 @@ python generate_metaworld_dataset.py \
     --add_modem_format true
 """
 
-
 def run(cfg):
     np.random.seed(cfg.seed)
     random.seed(cfg.seed)
 
     # Make the directory if it doesn"t exist
     os.makedirs(cfg.output_path, exist_ok=True)
+    
+    
+    env_kwargs = dataclasses.asdict(cfg.env_cfg)
+
+    factor_cfg_path = f'/workspaces/bdai/projects/foundation_models/src/force_learning/factor-world_forcelearning/cfgs/{env_kwargs["env_name"]}.yaml'
+
+    with open(factor_cfg_path) as f:
+        factor_args = yaml.safe_load(f)['env']['factors']
+    cfg.env_cfg.factor_kwargs.insert(0,"object_pos")
 
     # Make an `env_cfg.json` file that looks like the ones made by robomimic
+    cfg.env_cfg.factor_kwargs = {factor:factor_args[factor] for factor in cfg.env_cfg.factor_kwargs}
     env_kwargs = dataclasses.asdict(cfg.env_cfg)
+
     env_cfg_json_dict = dict()
     env_cfg_json_dict["env_name"] = env_kwargs["env_name"]
     env_cfg_json_dict["env_kwargs"] = env_kwargs
     with open(os.path.join(cfg.output_path, "env_cfg.json"), "w") as f:
         json.dump(env_cfg_json_dict, f)
 
+    
+
     # Make an instance of the environment
     env = PixelMetaWorld(**env_kwargs)
+
     output_file = os.path.join(cfg.output_path, "dataset.hdf5")
     f = h5py.File(output_file, "w")
 
@@ -199,6 +213,10 @@ class EnvironmentConfig:
     env_reward_scale: float = 1.0
     end_on_success: bool = False
     use_state: bool = True
+    use_force: bool = True
+    norm: bool = False
+    norm_dataset: str = None
+    factor_kwargs: List[str] = field(default_factory=lambda: [])
 
 
 @dataclass
@@ -209,7 +227,6 @@ class MainConfig:
     add_modem_format: bool = False
     env_cfg: EnvironmentConfig = field(default_factory=lambda: EnvironmentConfig())
     seed: int = 0
-
 
 if __name__ == "__main__":
     import rich.traceback

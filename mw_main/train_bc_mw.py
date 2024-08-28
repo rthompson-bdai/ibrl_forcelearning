@@ -8,16 +8,18 @@ import copy
 import yaml
 from env.metaworld_wrapper import PixelMetaWorld
 
+print("chunk 1 done")
 import pyrallis
 import numpy as np
 import torch
 import h5py
+print("chunk 2 done")
 
 import common_utils
 from common_utils import ibrl_utils as utils
 from mw_main.bc_policy import BcPolicy, BcPolicyConfig
 from mw_main.eval_mw import run_eval
-
+print("chunk 3 done")
 
 Batch = namedtuple("Batch", ["obs", "action"])
 
@@ -25,6 +27,7 @@ Batch = namedtuple("Batch", ["obs", "action"])
 root = os.path.dirname(os.path.dirname(__file__))
 env_names= [
     "Assembly",
+    "Basketball",
     "BoxClose",
     "StickPull",
     "CoffeePush",
@@ -47,8 +50,20 @@ env_names= [
     "window-close",
     "window-open"]
 
-DATASETS = {name: f"data/metaworld/{name}_frame_stack_1_96x96_end_on_success/dataset.hdf5" for name in env_names}
+factors=[
+    "arm_pos",
+    "camera_pos",
+    "distractor_pos",
+    "floor_texture",
+    "object_pos",
+    "object_texture",
+    "table_pos",
+    "table_texture",
+    "light",
+]
 
+DATASETS = {name: f"bc_data/metaworld/{name}_frame_stack_1_96x96_end_on_success/dataset.hdf5" for name in env_names}
+DATASETS.update({f"{name}_{factor}": f"bc_data/metaworld/{name}_{factor}_frame_stack_1_96x96_end_on_success/dataset.hdf5" for name in env_names for factor in factors})
 
 for k, v in DATASETS.items():
     DATASETS[k] = os.path.join(root, v)
@@ -215,6 +230,9 @@ class MainConfig(common_utils.RunConfig):
     grad_clip: float = 5
     weight_decay: float = 0
     ema: float = -1
+    use_force: bool = True
+    norm: bool = False
+    norm_dataset: str = None
     # to be overwritten by run() to facilitate model loading
     task_name: str = ""
     robot: str = ""
@@ -227,6 +245,7 @@ class MainConfig(common_utils.RunConfig):
 
 
 def run(cfg: MainConfig, policy):
+    print("WE ARE RUNNING BC")
     dataset = MetaWorldDataset(cfg.dataset)
     cfg.task_name = dataset.task_name
     cfg.robot = dataset.robot[0]  # hack
@@ -328,7 +347,6 @@ def run(cfg: MainConfig, policy):
     # quit!
     assert False
 
-
 # function to load bc models
 def load_model(weight_file, device):
     cfg_path = os.path.join(os.path.dirname(weight_file), f"cfg.yaml")
@@ -338,6 +356,9 @@ def load_model(weight_file, device):
     print(common_utils.wrap_ruler(""))
 
     cfg = pyrallis.load(MainConfig, open(cfg_path, "r"))  # type: ignore
+    config_path = os.path.join(os.path.dirname(cfg.dataset.path), "env_cfg.json")
+    env_config = json.load(open(config_path, "r"))
+
     env_params = dict(
         env_name=cfg.task_name,
         robots=cfg.robot,
@@ -351,13 +372,13 @@ def load_model(weight_file, device):
         rl_camera=cfg.dataset.rl_camera,
         device=device,
         use_state=cfg.dataset.use_state,
+        factor_kwargs = env_config['env_kwargs']['factor_kwargs']
     )
 
     env = PixelMetaWorld(**env_params)  # type: ignore
     policy = BcPolicy(env.observation_shape, env.prop_shape, env.action_dim, cfg.policy)
     policy.load_state_dict(torch.load(weight_file))
     return policy.to(device), env, env_params
-
 
 """
 Sample run:

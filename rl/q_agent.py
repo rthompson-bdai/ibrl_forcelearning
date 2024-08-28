@@ -155,7 +155,7 @@ class QAgent(nn.Module):
         self.cfg.act_method = original_method
         return
 
-    def _encode(self, obs: dict[str, torch.Tensor], augment: bool) -> torch.Tensor:
+    def _encode(self, obs, augment): #-> torch.Tensor:
         """This function encodes the observation into feature tensor."""
         data = obs[self.rl_camera].float()
         if augment:
@@ -176,9 +176,7 @@ class QAgent(nn.Module):
                 obs[k] = v.unsqueeze(0)
         return should_unsqueeze
 
-    def act(
-        self, obs: dict[str, torch.Tensor], *, eval_mode=False, stddev=0.0, cpu=True
-    ) -> torch.Tensor:
+    def act(self, obs, *, eval_mode=False, stddev=0.0, cpu=True): #-> torch.Tensor:
         """This function takes tensor and returns actions in tensor"""
         assert not self.training
         assert not self.actor.training
@@ -238,11 +236,11 @@ class QAgent(nn.Module):
     def _act_default(
         self,
         *,
-        obs: dict[str, torch.Tensor],
-        eval_mode: bool,
-        stddev: float,
-        clip: Optional[float],
-        use_target: bool,
+        obs, #: dict[str, torch.Tensor],
+        eval_mode, #: bool,
+        stddev, #: float,
+        clip, # : Optional[float],
+        use_target, #: bool,
     ) -> torch.Tensor:
         actor = self.actor_target if use_target else self.actor
         dist = actor.forward(obs, stddev)
@@ -260,12 +258,12 @@ class QAgent(nn.Module):
     def _act_ibrl(
         self,
         *,
-        obs: dict[str, torch.Tensor],
-        eval_mode: bool,
-        stddev: float,
-        clip: Optional[float],
-        eps_greedy: float,
-        use_target: bool,
+        obs, #: dict[str, torch.Tensor],
+        eval_mode, #: bool,
+        stddev, #: float,
+        clip, #: Optional[float],
+        eps_greedy, #: float,
+        use_target, #: bool,
     ) -> torch.Tensor:
         actor = self.actor_target if use_target else self.actor
         if eval_mode:
@@ -347,68 +345,68 @@ class QAgent(nn.Module):
         sample_space = torch.meshgrid(sample_axes)
         return action + sample_space
 
-    def _force_adjusted_ibrl(
-        self,
-        *,
-        obs: dict[str, torch.Tensor],
-        eval_mode: bool,
-        stddev: float,
-        clip: Optional[float],
-        eps_greedy: float,
-        use_target: bool,
-    ) -> torch.Tensor:
-        actor = self.actor_target if use_target else self.actor
-        if eval_mode:
-            assert not actor.training
+    # def _force_adjusted_ibrl(
+    #     self,
+    #     *,
+    #     obs, #: dict[str, torch.Tensor],
+    #     eval_mode, #: bool,
+    #     stddev, #: float,
+    #     clip: Optional[float],
+    #     eps_greedy: float,
+    #     use_target: bool,
+    # ) -> torch.Tensor:
+    #     actor = self.actor_target if use_target else self.actor
+    #     if eval_mode:
+    #         assert not actor.training
 
-        assert len(self.bc_policies) == 1
-        bc_policy = self.bc_policies[0]
-        bc_action = bc_policy.act(obs, cpu=False)
+    #     assert len(self.bc_policies) == 1
+    #     bc_policy = self.bc_policies[0]
+    #     bc_action = bc_policy.act(obs, cpu=False)
 
-        rl_dist: utils.TruncatedNormal = actor(obs, stddev)
-        if eval_mode:
-            rl_action = rl_dist.mean
-        else:
-            rl_action = rl_dist.sample(clip)
+    #     rl_dist: utils.TruncatedNormal = actor(obs, stddev)
+    #     if eval_mode:
+    #         rl_action = rl_dist.mean
+    #     else:
+    #         rl_action = rl_dist.sample(clip)
 
-        rl_bc_actions = torch.stack([rl_action, bc_action], dim=1)
-        bsize, num_action, _ = rl_bc_actions.size()
+    #     rl_bc_actions = torch.stack([rl_action, bc_action], dim=1)
+    #     bsize, num_action, _ = rl_bc_actions.size()
 
-        # get q(a)
-        # feat -> [batch, num_patch, patch_dim] -> [batch, num_action(2), num_patch, patch_dim]
-        flat_actions = rl_bc_actions.flatten(0, 1)
-        if isinstance(self.critic_target, Critic):
-            flat_qfeats = obs["feat"].unsqueeze(1).repeat(1, num_action, 1, 1).flatten(0, 1)
-            flat_props = obs["prop"].unsqueeze(1).repeat(1, num_action, 1).flatten(0, 1)
-            q1, q2 = self.critic_target.forward(flat_qfeats, flat_props, flat_actions)
-            qa: torch.Tensor = torch.min(q1, q2).view(bsize, num_action)
-        else:
-            state = obs["state"]
-            flat_state = state.unsqueeze(1).repeat(1, num_action, 1).flatten(0, 1)
-            qa: torch.Tensor = self.critic_target.forward_k(flat_state, flat_actions)
-            qa = qa.min(-1)[0].view(bsize, num_action)
+    #     # get q(a)
+    #     # feat -> [batch, num_patch, patch_dim] -> [batch, num_action(2), num_patch, patch_dim]
+    #     flat_actions = rl_bc_actions.flatten(0, 1)
+    #     if isinstance(self.critic_target, Critic):
+    #         flat_qfeats = obs["feat"].unsqueeze(1).repeat(1, num_action, 1, 1).flatten(0, 1)
+    #         flat_props = obs["prop"].unsqueeze(1).repeat(1, num_action, 1).flatten(0, 1)
+    #         q1, q2 = self.critic_target.forward(flat_qfeats, flat_props, flat_actions)
+    #         qa: torch.Tensor = torch.min(q1, q2).view(bsize, num_action)
+    #     else:
+    #         state = obs["state"]
+    #         flat_state = state.unsqueeze(1).repeat(1, num_action, 1).flatten(0, 1)
+    #         qa: torch.Tensor = self.critic_target.forward_k(flat_state, flat_actions)
+    #         qa = qa.min(-1)[0].view(bsize, num_action)
 
-        # best_action_idx: [batch]
-        greedy_action_idx: torch.Tensor = qa.argmax(1)
-        greedy_action = rl_bc_actions[range(bsize), greedy_action_idx]
+    #     # best_action_idx: [batch]
+    #     greedy_action_idx: torch.Tensor = qa.argmax(1)
+    #     greedy_action = rl_bc_actions[range(bsize), greedy_action_idx]
 
-        possible_action = self._perturb_action(greedy_action)
-        #get force vector and score based on that like with the diffusion thing
-        #pick the one that minimizes that score- make sure that all makes sense
-        #there's gonna have to be some kind of weighting there but see what happens
-        #do the same thing where we test and also visualize policy and policy force
-        #what we want is lower force and ideally more success, but let's see
-        #honestly should just try this with a place task
+    #     possible_action = self._perturb_action(greedy_action)
+    #     #get force vector and score based on that like with the diffusion thing
+    #     #pick the one that minimizes that score- make sure that all makes sense
+    #     #there's gonna have to be some kind of weighting there but see what happens
+    #     #do the same thing where we test and also visualize policy and policy force
+    #     #what we want is lower force and ideally more success, but let's see
+    #     #honestly should just try this with a place task
 
 
     def _act_ibrl_soft(
         self,
         *,
-        obs: dict[str, torch.Tensor],
-        eval_mode: bool,
-        stddev: float,
-        clip: Optional[float],
-        use_target: bool,
+        obs, #: dict[str, torch.Tensor],
+        eval_mode, #: bool,
+        stddev, #: float,
+        clip, #: Optional[float],
+        use_target, #: bool,
     ):
         actor = self.actor_target if use_target else self.actor
         if eval_mode:
@@ -469,12 +467,12 @@ class QAgent(nn.Module):
 
     def update_critic(
         self,
-        obs: dict[str, torch.Tensor],
-        reply: dict[str, torch.Tensor],
-        reward: torch.Tensor,
-        discount: torch.Tensor,
-        next_obs: dict[str, torch.Tensor],
-        stddev: float,
+        obs, #: dict[str, torch.Tensor],
+        reply, #: dict[str, torch.Tensor],
+        reward, #: torch.Tensor,
+        discount, #: torch.Tensor,
+        next_obs, #: dict[str, torch.Tensor],
+        stddev, #: float,
     ):
         with torch.no_grad():
             # use train mode as we use actor dropout
@@ -545,7 +543,7 @@ class QAgent(nn.Module):
         self.critic_opt.step()
         return metrics
 
-    def _compute_actor_loss(self, obs: dict[str, torch.Tensor], stddev: float):
+    def _compute_actor_loss(self, obs, stddev: float):
         if not self.use_state:
             assert "feat" in obs, "safety check"
 
@@ -586,7 +584,7 @@ class QAgent(nn.Module):
         loss = loss.sum(1).mean(0)
         return loss
 
-    def update_actor(self, obs: dict[str, torch.Tensor], stddev: float):
+    def update_actor(self, obs, stddev):
         metrics = {}
         actor_loss = self._compute_actor_loss(obs, stddev)
         metrics["train/actor_loss"] = actor_loss.item()
@@ -599,10 +597,10 @@ class QAgent(nn.Module):
 
     def update_actor_rft(
         self,
-        obs: dict[str, torch.Tensor],
-        stddev: float,
+        obs, #: dict[str, torch.Tensor],
+        stddev, #: float,
         bc_batch,
-        ref_agent: "QAgent",
+        ref_agent, #: "QAgent",
     ):
         metrics = {}
         actor_loss = self._compute_actor_loss(obs, stddev)
