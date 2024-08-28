@@ -75,19 +75,19 @@ class ReplayBuffer:
     def set_visual_reward(self, visual_reward):
         self.visual_reward = visual_reward
 
-    def new_episode(self, obs: dict[str, torch.Tensor]):
+    def new_episode(self, obs):
         self.episode_image_obs = defaultdict(list)
         self.episode.init({})
         self.episode.push_obs(obs)
 
     def add(
         self,
-        obs: dict[str, torch.Tensor],
-        reply: dict[str, torch.Tensor],
-        reward: float,
-        terminal: bool,
-        success: bool,
-        image_obs: dict[str, torch.Tensor],
+        obs, #: dict[str, torch.Tensor],
+        reply, #: dict[str, torch.Tensor],
+        reward, #: float,
+        terminal, #: bool,
+        success, #: bool,
+        image_obs, #: dict[str, torch.Tensor],
     ):
         self.episode.push_action(reply)
         self.episode.push_reward(reward)
@@ -164,6 +164,7 @@ def add_demos_to_replay(
     use_state: int,
     obs_stack: int,
     reward_scale: float,
+    prop_dim: int,
 ):
     assert not use_state
     assert obs_stack == 1
@@ -189,7 +190,7 @@ def add_demos_to_replay(
             if i < episode_len:
                 obs = {
                     "obs": torch.from_numpy(images[i]),
-                    "prop": torch.zeros(10),
+                    "prop": torch.zeros(prop_dim),
                 }
 
             if i == 0:
