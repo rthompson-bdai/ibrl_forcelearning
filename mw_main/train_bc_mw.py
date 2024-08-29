@@ -348,7 +348,7 @@ def run(cfg: MainConfig, policy):
     assert False
 
 # function to load bc models
-def load_model(weight_file, device):
+def load_model(weight_file, device, eval=False):
     cfg_path = os.path.join(os.path.dirname(weight_file), f"cfg.yaml")
     print(common_utils.wrap_ruler("config of loaded agent"))
     with open(cfg_path, "r") as f:
@@ -372,7 +372,8 @@ def load_model(weight_file, device):
         rl_camera=cfg.dataset.rl_camera,
         device=device,
         use_state=cfg.dataset.use_state,
-        factor_kwargs = env_config['env_kwargs']['factor_kwargs']
+        factor_kwargs = env_config['env_kwargs']['factor_kwargs'],
+        use_train_xml= not eval
     )
 
     env = PixelMetaWorld(**env_params)  # type: ignore

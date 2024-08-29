@@ -15,6 +15,7 @@ def run_eval(
     record_dir=None,
     verbose=True,
     eval_mode=True,
+    save_video=True,
 ):
     recorder = None if record_dir is None else Recorder(record_dir)
 
@@ -44,12 +45,13 @@ def run_eval(
                 )
 
             scores.append(np.sum(rewards))
+            factors = env.unwrapped.factors
 
             if recorder is not None:
-                save_path = recorder.save(f"episode{episode_idx}")
+                save_path = recorder.save(f"episode{episode_idx}", save_video=save_video)
                 reward_path = f"{save_path}.reward.pkl"
                 print(f"saving reward to {reward_path}")
-                pickle.dump(rewards, open(reward_path, "wb"))
+                pickle.dump({'rewards': rewards, 'factors': factors}, open(reward_path, "wb"))
 
     if verbose:
         print(f"num game: {len(scores)}, seed: {seed}, score: {np.mean(scores)}")

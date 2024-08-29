@@ -55,6 +55,7 @@ factors=[
     "object_texture",
     "table_pos",
     "table_texture",
+    "light",
 ]
 
 BC_DATASETS = {name: f"bc_data/metaworld/{name}_frame_stack_1_96x96_end_on_success/dataset.hdf5" for name in env_names}
@@ -101,6 +102,7 @@ class MainConfig(common_utils.RunConfig):
     use_force: bool = True
     norm: bool = False
     norm_dataset: str = None
+    eval: bool=False
     # load demo
     mix_rl_rate: float = 1  # 1: only use rl, <1, mix in some bc data
     preload_num_data: int = 0
@@ -199,12 +201,13 @@ class Workspace:
         self.env_params["episode_length"] = self.cfg.episode_length
         self.env_params["env_reward_scale"] = self.cfg.env_reward_scale
         self.env_params["use_force"] = self.cfg.use_force
+        self.env_params["use_train_xml"] =  not self.cfg.eval
 
         self.train_env = PixelMetaWorld(**self.env_params)  # type: ignore
 
-        eval_env_params = self.env_params.copy()
-        eval_env_params["env_reward_scale"] = 1.0
-        self.eval_env = PixelMetaWorld(**eval_env_params)  # type: ignore
+        self.eval_env_params = self.env_params.copy()
+        self.eval_env_params["env_reward_scale"] = 1.0
+        self.eval_env = PixelMetaWorld(**self.eval_env_params)  # type: ignore
 
     def _setup_replay(self):
         use_bc = (self.cfg.mix_rl_rate < 1) or self.cfg.add_bc_loss
@@ -437,6 +440,32 @@ def main(cfg: MainConfig):
         wandb.finish()
 
     assert False
+
+def load_model(weight_file, device, eval=False):
+    cfg_path = os.path.join(os.path.dirname(weight_file), f"cfg.yaml")
+    with open(cfg_path, "r") as f:
+        print(f.read(), end="")
+    print(common_utils.wrap_ruler(""))
+
+    cfg = pyrallis.load(MainConfig, open(cfg_path, "r"))  # type: ignore
+    cfg.preload_num_data = 0  # override this to avoid loading data
+    cfg.eval=eval
+    workplace = Workspace(cfg)
+
+    eval_env = workplace.eval_env
+    eval_env_params = workplace.eval_env_params
+    agent = workplace.agent
+    state_dict = torch.load(weight_file)
+    agent.load_state_dict(state_dict)
+
+    # if cfg.bc_policy:
+    #     bc_policy, _, _ = train_bc_mw.load_model(cfg.bc_policy, device, eval=eval)
+    #     agent.add_bc_policy(bc_policy)
+
+    # print(len(agent.bc_policies))
+    # exit(0)
+    agent = agent.to(device)
+    return agent, eval_env, eval_env_params
 
 
 if __name__ == "__main__":

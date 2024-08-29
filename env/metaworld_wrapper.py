@@ -14,7 +14,7 @@ try:
     from wrappers import make_env_with_factors
 
 except Exception as e:
-    sys.path.append('/workspaces/bdai/projects/foundation_models/src/force_learning/factor-world_forcelearning')
+    sys.path.append('/home/rthompson_theaiinstitute_com/bdai/projects/foundation_models/src/force_learning/factor-world_forcelearning')
     import gym
     import metaworld
     import metaworld.policies
@@ -470,6 +470,7 @@ class PixelMetaWorld:
         end_on_success=True,
         use_state=False,
         use_force = True,
+        use_train_xml = True,
         norm=False, 
         norm_dataset=None,
         env_kwargs={}, 
@@ -493,7 +494,9 @@ class PixelMetaWorld:
             height=rl_image_size,
             env_kwargs=env_kwargs,
             factor_kwargs=factor_kwargs,
+            use_train_xml=use_train_xml,
         )
+        self.unwrapped = self.base_env.env.unwrapped
         # For every outer call to step, make multiple inner calls to step
         self.env = ActionRepeatWrapper(env=self.base_env, num_repeats=action_repeat)
         # Add a key `prop` to the observation with proprioceptive dimensions

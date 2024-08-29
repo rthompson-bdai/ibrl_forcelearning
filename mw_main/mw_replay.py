@@ -182,6 +182,8 @@ def add_demos_to_replay(
         actions: np.ndarray = np.array(episode["actions"])  # type: ignore
         images: np.ndarray = np.array(episode[f"obs/{rl_camera}_image"])  # type: ignore
         rewards: np.ndarray = np.array(f[f"data/{episode_tag}/rewards"])  # type: ignore
+        if rewards[-1] < 1.0:
+            continue
         terminals = rewards
         print("rewards:", rewards)
 

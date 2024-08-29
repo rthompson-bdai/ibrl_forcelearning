@@ -48,7 +48,7 @@ def run(cfg):
     
     env_kwargs = dataclasses.asdict(cfg.env_cfg)
 
-    factor_cfg_path = f'/workspaces/bdai/projects/foundation_models/src/force_learning/factor-world_forcelearning/cfgs/{env_kwargs["env_name"]}.yaml'
+    factor_cfg_path = f'/home/rthompson_theaiinstitute_com/bdai/projects/foundation_models/src/force_learning/factor-world_forcelearning/cfgs/{env_kwargs["env_name"]}.yaml'
 
     with open(factor_cfg_path) as f:
         factor_args = yaml.safe_load(f)['env']['factors']
