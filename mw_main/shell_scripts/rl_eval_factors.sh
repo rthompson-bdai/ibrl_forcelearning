@@ -8,24 +8,24 @@ envs=(  #"Assembly" \
     # "StickPull" \
     # "PegInsertSide" \
     # "Soccer" \
-    "button-press" \
-    "pick-place" \
-    #"bin-picking" \
-    # "button-press-topdown" \
-    # "button-press-topdown-wall" \
+    # "button-press" \
+    # "pick-place" \
+    # #"bin-picking" \
+    # # "button-press-topdown" \
+    # # "button-press-topdown-wall" \
     "door-lock" \
-    "door-open" \
-    # "door-unlock" \
+    # "door-open" \
+    # # "door-unlock" \
     "drawer-close" \
-    # "drawer-open" \
-    #"faucet-close" \
-    "faucet-open" \
-    "handle-press" \
-    "handle-pull" \
-    # "handle-pull-side" \
+    # # "drawer-open" \
+    # #"faucet-close" \
+    # "faucet-open" \
+    # "handle-press" \
+    # "handle-pull" \
+    # # "handle-pull-side" \
     "lever-pull" \
-    # "window-close" \
-    "window-open" \
+    # # "window-close" \
+    # "window-open" \
     )
 
 
@@ -45,6 +45,9 @@ n=0
 
 for env in ${envs[@]}; do
   for factor in ${factors[@]}; do
+    # echo ${env}_${factor}
+    @python dummy_file_check.py --file ./rl_models/metaworld/${env}_${factor}_force/model0.pt
+
     env CUDA_VISIBLE_DEVICES=$n \
     python run_trained_policy.py --weight ./rl_models/metaworld/${env}_${factor}_force/model0.pt  \
                                  --record_dir ./rl_eval_test/metaworld/${env}_${factor} \

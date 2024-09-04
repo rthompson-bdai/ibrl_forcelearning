@@ -8,36 +8,36 @@ envs=(  #"Assembly" \
     # "StickPull" \
     # "PegInsertSide" \
     # "Soccer" \
-    "button-press" \
-    "pick-place" \
-    #"bin-picking" \
-    # "button-press-topdown" \
-    # "button-press-topdown-wall" \
-    "door-lock" \
-    "door-open" \
-    # "door-unlock" \
-    "drawer-close" \
-    # "drawer-open" \
-    #"faucet-close" \
-    "faucet-open" \
-    "handle-press" \
+    # "button-press" \
+    # "pick-place" \
+    # #"bin-picking" \
+    # # "button-press-topdown" \
+    # # "button-press-topdown-wall" \
+    # "door-lock" \
+    # "door-open" \
+    # # "door-unlock" \
+    # "drawer-close" \
+    # # "drawer-open" \
+    # #"faucet-close" \
+    # "faucet-open" \
+    # "handle-press" \
     "handle-pull" \
     # "handle-pull-side" \
-    "lever-pull" \
-    # "window-close" \
-    "window-open" \
+    # "lever-pull" \
+    # # "window-close" \
+    # "window-open" \
     )
 
 
 factors=(
     "arm_pos" \
-    "camera_pos" \
-    #"distractor_pos"  \
-    "floor_texture" \
-    #"object_texture" \
-    "table_pos" \
-    "table_texture" \
-    light \
+    # "camera_pos" \
+    # #"distractor_pos"  \
+    # "floor_texture" \
+    # #"object_texture" \
+    # "table_pos" \
+    # "table_texture" \
+    # light \
 )
 
 num_devices=`nvidia-smi  -L | wc -l`

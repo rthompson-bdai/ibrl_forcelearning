@@ -50,8 +50,7 @@ for env in ${envs[@]}; do
                                                       --save_dir rl_models/metaworld/${env}_${factor}_no_force\
                                                       --use_wb 1 \
                                                       --wb_exp ${factor}_rl \
-                                                      --wb_run ${env}_no_force \
-                                                      --norm True &
+                                                      --wb_run ${env}_no_force &
         n=$((n + 1))
         if test $n -eq $num_devices; then
             wait

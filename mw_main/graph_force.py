@@ -84,7 +84,8 @@ if __name__ == "__main__":
     
     env = PixelMetaWorld(**env_kwargs)
 
-    fig = make_subplots(rows=3, cols=1, subplot_titles=("EE Force", "Demo", "EE Torque"))
+    fig = make_subplots(rows=3, cols=1, subplot_titles=("Right EE Force", "Demo", "Left EE Force"), )
+    fig.update_layout(title=cfg.env_cfg.env_name)
 
     forces = []
     torques = []
@@ -111,9 +112,9 @@ if __name__ == "__main__":
     torques=np.array(torques)#v_func_torque(np.array(torques))
     print(forces.shape)
     
-    fig.add_trace(go.Scatter(x = np.arange(len(forces)), y= forces[:,0], name='X force'), row=1, col=1)
-    fig.add_trace(go.Scatter(x = np.arange(len(forces)), y= forces[:,1], name='Y force'), row=1, col=1)
-    fig.add_trace(go.Scatter(x = np.arange(len(forces)), y= forces[:,2], name='Z force'), row=1, col=1)
+    fig.add_trace(go.Scatter(x = np.arange(len(forces)), y= forces[:,0], name='rX force'), row=1, col=1)
+    fig.add_trace(go.Scatter(x = np.arange(len(forces)), y= forces[:,1], name='rY force'), row=1, col=1)
+    fig.add_trace(go.Scatter(x = np.arange(len(forces)), y= forces[:,2], name='rZ force'), row=1, col=1)
 
     #print(dir(go))
     #figm = px.imshow(images, binary_string=True, facet_col=0, facet_col_wrap=10)
@@ -122,9 +123,9 @@ if __name__ == "__main__":
     for i, image in enumerate(images):
         fig.add_trace( go.Image(z=np.flipud(image), x0=i*len(image),), row=2, col=1)
 
-    fig.add_trace(go.Scatter(x = np.arange(len(torques)), y= torques[:,0], name='R torque'), row=3, col=1)
-    fig.add_trace(go.Scatter(x = np.arange(len(torques)), y= torques[:,1], name='P torque'), row=3, col=1)
-    fig.add_trace(go.Scatter(x = np.arange(len(torques)), y= torques[:,2], name='Y torque'), row=3, col=1)
+    fig.add_trace(go.Scatter(x = np.arange(len(torques)), y= torques[:,0], name='lX force'), row=3, col=1)
+    fig.add_trace(go.Scatter(x = np.arange(len(torques)), y= torques[:,1], name='lY force'), row=3, col=1)
+    fig.add_trace(go.Scatter(x = np.arange(len(torques)), y= torques[:,2], name='lZ force'), row=3, col=1)
 
     # other_obs = f["data/{}/obs".format(ep)]
     # #print(other_obs['robot0_ee_force'])
@@ -140,7 +141,7 @@ if __name__ == "__main__":
 
 
     #fig.show()
-    fig.write_image("fig1.png")
+    fig.write_image(f"force_profiles/gripper_{cfg.env_cfg.env_name}_force_profile.png")
 
     #actions = np.array(f["data/{}/actions".format(ep)][()])
     exit(0)

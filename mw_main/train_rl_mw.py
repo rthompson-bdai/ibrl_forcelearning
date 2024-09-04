@@ -100,6 +100,7 @@ class MainConfig(common_utils.RunConfig):
     bc_policy: str = ""
     use_bc: int = 1
     use_force: bool = True
+    no_prop: bool = False
     norm: bool = False
     norm_dataset: str = None
     eval: bool=False
@@ -171,7 +172,10 @@ class Workspace:
         self._setup_env()
 
         if self.cfg.use_force:
-            prop_dim = 10
+            if self.cfg.no_prop:
+                prop_dim = 6
+            else:
+                prop_dim = 10
         else:
             prop_dim = 4
 
@@ -201,6 +205,7 @@ class Workspace:
         self.env_params["episode_length"] = self.cfg.episode_length
         self.env_params["env_reward_scale"] = self.cfg.env_reward_scale
         self.env_params["use_force"] = self.cfg.use_force
+        self.env_params["no_prop"] = self.cfg.no_prop
         self.env_params["use_train_xml"] =  not self.cfg.eval
 
         self.train_env = PixelMetaWorld(**self.env_params)  # type: ignore
@@ -213,7 +218,10 @@ class Workspace:
         use_bc = (self.cfg.mix_rl_rate < 1) or self.cfg.add_bc_loss
 
         if self.cfg.use_force:
-            prop_dim = 10
+            if self.cfg.no_prop:
+                prop_dim = 6
+            else:
+                prop_dim = 10
         else:
             prop_dim = 4
 
