@@ -8,17 +8,17 @@ envs=(  #"Assembly" \
     # "StickPull" \
     # "PegInsertSide" \
     # "Soccer" \
-    # "button-press" \
-    # "pick-place" \
-    # #"bin-picking" \
-    # # "button-press-topdown" \
-    # # "button-press-topdown-wall" \
-    # "door-lock" \
-    # "door-open" \
-    # # "door-unlock" \
-    # "drawer-close" \
-    # "drawer-open" \
-    #"faucet-close" \
+    "button-press" \
+    "pick-place" \
+    #"bin-picking" \
+    # "button-press-topdown" \
+    # "button-press-topdown-wall" \
+    "door-lock" \
+    "door-open" \
+    # "door-unlock" \
+    "drawer-close" \
+    "drawer-open" \
+    "faucet-close" \
     "faucet-open" \
     "handle-press" \
     "handle-pull" \
@@ -46,10 +46,10 @@ for env in ${envs[@]}; do
   for factor in ${factors[@]}; do
     env CUDA_VISIBLE_DEVICES=$n \
     python run_trained_policy.py --weight ./models/metaworld/${env}_${factor}/model1.pt  \
-                                 --record_dir ./bc_eval_train/metaworld/${env}_${factor} \
+                                 --record_dir ./bc_eval_test/metaworld/${env}_${factor} \
                                  --seed 2024 \
-                                 --num_games 50 &
-                                # #  --eval \
+                                 --num_games 50 \
+                                 --eval &
                                 #  > log/metaworld/bc/eval_${env}_${factor}.txt &
 
     n=$((n + 1))

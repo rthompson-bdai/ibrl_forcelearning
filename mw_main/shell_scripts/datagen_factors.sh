@@ -28,6 +28,7 @@ envs=(  #"Assembly" \
     )
 
 factors=(
+    "None"
     # "arm_pos" \
     # "camera_pos" \
     # # "distractor_pos"  \
@@ -35,15 +36,16 @@ factors=(
     # #"object_texture" \
     # "table_pos" \
     # "table_texture" \
-    "light" \
+    # "light" \
     #"object_size"
 )
 
-max_processes=10
+num_devices=`nvidia-smi  -L | wc -l`
 n=0
 
 for env in ${envs[@]}; do
     for factor in ${factors[@]}; do
+        env CUDA_VISIBLE_DEVICES=$n \
         python generate_metaworld_dataset.py \
             --num_episodes 10 \
             --save_gifs 5 \
@@ -54,8 +56,8 @@ for env in ${envs[@]}; do
             --env_cfg.rl_image_size 96 \
             --env_cfg.end_on_success true &
         n=$((n + 1))
-        if test $n -eq $max_processes; then
-            wait -n 
+         if test $n -eq $num_devices; then
+            wait
             n=0
         fi
     done

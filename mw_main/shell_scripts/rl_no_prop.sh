@@ -30,44 +30,45 @@ envs=(  #"Assembly" \
 
 
 factors=(
-    "arm_pos" \
-    "camera_pos" \
-    #"distractor_pos"  \
-    "floor_texture" \
-    #"object_texture" \
-    "table_pos" \
-    "table_texture" \
-    "light" \
+    ""
+    # "arm_pos" \
+    # "camera_pos" \
+    # #"distractor_pos"  \
+    # "floor_texture" \
+    # #"object_texture" \
+    # "table_pos" \
+    # "table_texture" \
+    # "light" \
 )
 
 #make the name of the dataset path
 
-seeds=( 2026 2027 2028 ) #2024 2025 
+seeds=( 2025 2026 2027 2028 ) #2024 2025 
 num_devices=`nvidia-smi  -L | wc -l`
 n=0
 
-# for seed in ${seeds[@]}; do
-#     for env in ${envs[@]}; do
-#         for factor in ${factors[@]}; do
-#             env CUDA_VISIBLE_DEVICES=$n \
-#             python train_rl_mw.py --config_path ../release/cfgs/metaworld/ibrl_basic_force_only.yaml  \
-#                                                         --bc_policy ${env}_${factor} \
-#                                                         --save_dir no_prop_rl_models/metaworld/${seed}/${env}_${factor}_force \
-#                                                         --use_wb 1 \
-#                                                         --wb_exp no_prop_${factor}_rl \
-#                                                         --wb_run ${env}_force_${seed} \
-#                                                         --seed ${seed} \
-#                                                         --no_prop True \
-#                                                         --norm True \
-#                                                         &> log/rl_force_only_${env}_${factor}.txt &
-#             n=$((n + 1))
-#             if test $n -eq $num_devices; then
-#                 wait
-#                 n=0
-#             fi
-#         done 
-#     done
-# done
+for seed in ${seeds[@]}; do
+    for env in ${envs[@]}; do
+        for factor in ${factors[@]}; do
+            env CUDA_VISIBLE_DEVICES=$n \
+            python -u train_rl_mw.py --config_path ../release/cfgs/metaworld/ibrl_basic_force_only.yaml  \
+                                                        --bc_policy ${env}_${factor} \
+                                                        --save_dir norm_warmup_no_prop_rl_models/metaworld/${seed}/${env}_${factor}_force \
+                                                        --use_wb 1 \
+                                                        --wb_exp norm_warmup_no_prop_${factor}_rl \
+                                                        --wb_run ${env}_force_${seed} \
+                                                        --seed ${seed} \
+                                                        --no_prop True \
+                                                        --norm True \
+                                                        &> log/rl_force_only_${env}_${factor}.txt &
+            n=$((n + 1))
+            if test $n -eq $num_devices; then
+                wait
+                n=0
+            fi
+        done 
+    done
+done
 
 num_devices=`nvidia-smi  -L | wc -l`
 n=0

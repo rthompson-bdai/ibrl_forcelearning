@@ -55,7 +55,7 @@ def run(cfg):
     cfg.env_cfg.factor_kwargs.insert(0,"object_pos")
 
     # Make an `env_cfg.json` file that looks like the ones made by robomimic
-    cfg.env_cfg.factor_kwargs = {factor:factor_args[factor] for factor in cfg.env_cfg.factor_kwargs}
+    cfg.env_cfg.factor_kwargs = {factor:factor_args[factor] for factor in cfg.env_cfg.factor_kwargs if factor != "None"}
     env_kwargs = dataclasses.asdict(cfg.env_cfg)
 
     env_cfg_json_dict = dict()

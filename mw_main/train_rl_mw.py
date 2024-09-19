@@ -207,12 +207,15 @@ class Workspace:
         self.env_params["use_force"] = self.cfg.use_force
         self.env_params["no_prop"] = self.cfg.no_prop
         self.env_params["use_train_xml"] =  not self.cfg.eval
-
+        self.env_params["norm"] = self.cfg.norm
+        self.env_params["norm_dataset"] = self.cfg.norm_dataset
         self.train_env = PixelMetaWorld(**self.env_params)  # type: ignore
 
         self.eval_env_params = self.env_params.copy()
         self.eval_env_params["env_reward_scale"] = 1.0
         self.eval_env = PixelMetaWorld(**self.eval_env_params)  # type: ignore
+
+    
 
     def _setup_replay(self):
         use_bc = (self.cfg.mix_rl_rate < 1) or self.cfg.add_bc_loss
@@ -244,6 +247,7 @@ class Workspace:
                 obs_stack=self.env_params["obs_stack"],
                 reward_scale=self.cfg.env_reward_scale,
                 prop_dim=prop_dim,
+                normalize_file=self.cfg.norm_dataset,
             )
             self.replay.freeze_bc_replay = True
 
@@ -449,7 +453,8 @@ def main(cfg: MainConfig):
 
     assert False
 
-def load_model(weight_file, device, eval=False):
+def load_model(weight_file, device, eval=False, norm=True):
+    norm=False
     cfg_path = os.path.join(os.path.dirname(weight_file), f"cfg.yaml")
     with open(cfg_path, "r") as f:
         print(f.read(), end="")
@@ -458,10 +463,13 @@ def load_model(weight_file, device, eval=False):
     cfg = pyrallis.load(MainConfig, open(cfg_path, "r"))  # type: ignore
     cfg.preload_num_data = 0  # override this to avoid loading data
     cfg.eval=eval
+    cfg.norm=norm
+
     workplace = Workspace(cfg)
 
     eval_env = workplace.eval_env
     eval_env_params = workplace.eval_env_params
+
     agent = workplace.agent
     state_dict = torch.load(weight_file)
     agent.load_state_dict(state_dict)

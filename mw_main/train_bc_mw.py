@@ -307,30 +307,30 @@ def run(cfg: MainConfig, policy):
                     utils.soft_update_params(policy, ema_policy, cfg.ema)
 
         epoch_time = stopwatch.elapsed_time_since_reset
-        with stopwatch.time("eval"):
-            seed = epoch * 1991991991 % 9997
-            scores = run_eval(dataset.env, policy, num_game=50, seed=seed, verbose=False)
-            if ema_policy is not None:
-                ema_scores = run_eval(
-                    dataset.env, ema_policy, num_game=50, seed=seed, verbose=False
-                )
-                ema_score = float(np.mean(ema_scores))
-                cur_score = float(np.mean(scores))
-                stat["ema_score"].append(ema_score)
-                stat["cur_score"].append(cur_score)
-                if ema_score > cur_score:
-                    saved = saver.save(ema_policy.state_dict(), ema_score)
-                    score = ema_score
-                else:
-                    saved = saver.save(policy.state_dict(), cur_score)
-                    score = cur_score
-            else:
-                score = float(np.mean(scores))
-                saved = saver.save(policy.state_dict(), score)
+        # with stopwatch.time("eval"):
+        #     seed = epoch * 1991991991 % 9997
+        #     scores = run_eval(dataset.env, policy, num_game=50, seed=seed, verbose=False)
+        #     if ema_policy is not None:
+        #         ema_scores = run_eval(
+        #             dataset.env, ema_policy, num_game=50, seed=seed, verbose=False
+        #         )
+        #         ema_score = float(np.mean(ema_scores))
+        #         cur_score = float(np.mean(scores))
+        #         stat["ema_score"].append(ema_score)
+        #         stat["cur_score"].append(cur_score)
+        #         if ema_score > cur_score:
+        #             saved = saver.save(ema_policy.state_dict(), ema_score)
+        #             score = ema_score
+        #         else:
+        #             saved = saver.save(policy.state_dict(), cur_score)
+        #             score = cur_score
+        #     else:
+        #         score = float(np.mean(scores))
+        saved = saver.save(policy.state_dict(), 0)
 
-        best_score = max(best_score, score)
-        stat["score"].append(score)
-        stat["score(best)"].append(best_score)
+        # best_score = max(best_score, score)
+        # stat["score"].append(score)
+        # stat["score(best)"].append(best_score)
         stat["speed"].append(cfg.epoch_len / epoch_time)
         stat.summary(epoch)
         stopwatch.summary()
@@ -340,8 +340,8 @@ def run(cfg: MainConfig, policy):
     # final eval
     best_model = saver.get_best_model()
     policy.load_state_dict(torch.load(best_model))
-    scores = run_eval(dataset.env, policy, num_game=50, seed=1, verbose=False)
-    stat["final_score"].append(np.mean(scores))
+    # scores = run_eval(dataset.env, policy, num_game=50, seed=1, verbose=False)
+    # stat["final_score"].append(np.mean(scores))
     stat.summary(cfg.num_epoch)
 
     # quit!
@@ -373,7 +373,9 @@ def load_model(weight_file, device, eval=False):
         device=device,
         use_state=cfg.dataset.use_state,
         factor_kwargs = env_config['env_kwargs']['factor_kwargs'],
-        use_train_xml= not eval
+        use_train_xml= not eval,
+        norm=True,
+        norm_dataset=cfg.dataset.path,
     )
 
     env = PixelMetaWorld(**env_params)  # type: ignore

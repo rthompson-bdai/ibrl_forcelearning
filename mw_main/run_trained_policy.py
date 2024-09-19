@@ -12,10 +12,12 @@ if __name__ == "__main__":
     parser.add_argument("--seed", type=int, default=1)
     parser.add_argument("--eval", action="store_true")
     parser.add_argument("--save_video", action="store_true")
+    parser.add_argument("--save_images", action="store_true")
+    parser.add_argument("--save_plots", action="store_true")
     args = parser.parse_args()
 
     if args.mode == 'bc':
         policy, env, env_params = bc_load_model(args.weight, 'cuda', eval=args.eval)
     else:
         policy, env, env_params = rl_load_model(args.weight, 'cuda', eval=args.eval)
-    scores = run_eval(env, policy, num_game=args.num_games, seed=args.seed, record_dir=args.record_dir, verbose=False, save_video=args.save_video)
+    scores = run_eval(env, policy, num_game=args.num_games, seed=args.seed, record_dir=args.record_dir, verbose=False, save_video=args.save_video, save_plots=args.save_plots, save_images=args.save_images)

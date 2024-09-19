@@ -30,7 +30,8 @@ class BcPolicy(nn.Module):
         if cfg.use_prop:
             assert len(prop_shape) == 1
             self.compress = nn.Linear(self.encoder.repr_dim, cfg.feature_dim)
-            policy_input_dim = cfg.feature_dim + prop_shape[0]
+            policy_input_dim = cfg.feature_dim + 6#prop_shape[0]
+            print(policy_input_dim)
         else:
             policy_input_dim = self.encoder.repr_dim
 
@@ -51,8 +52,12 @@ class BcPolicy(nn.Module):
 
     def forward(self, obs):
         h = self.encoder(obs["obs"])
-        assert not self.cfg.use_prop
-        mu = self.policy(h)
+        if self.cfg.use_prop:
+            h = self.compress(h)
+            h = torch.concatenate([h, obs['prop'][:, -6:]], axis=1)
+            mu = self.policy(h)
+        else:
+            mu = self.policy(h)
         mu = torch.tanh(mu)
         return mu
 
@@ -76,10 +81,11 @@ class BcPolicy(nn.Module):
 
     def loss(self, batch):
         image: torch.Tensor = batch.obs["obs"]
+        prop: torch.Tensor = batch.obs["prop"]
         action: torch.Tensor = batch.action["action"]
 
         image = self.aug(image.float())
-        pred_a = self.forward({"obs": image})
+        pred_a = self.forward({"obs": image, "prop": prop})
         loss = nn.functional.mse_loss(pred_a, action, reduction="none")
         loss = loss.sum(1).mean(0)
         return loss

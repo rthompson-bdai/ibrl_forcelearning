@@ -156,6 +156,31 @@ def stack_obs(key, v0, past_obses, obs_stack):
     return torch.cat(vals, dim=0)
 
 
+def normalize_data(norm_dataset, prop_data):
+    f = h5py.File(norm_dataset, "r")
+    demos = list(f["data"].keys())
+    inds = np.argsort([int(elem[5:]) for elem in demos])
+    demos = [demos[i] for i in inds]
+    force_data  = []
+    torque_data = []
+    for demo_name in demos:
+        demo = f["data/{}/obs".format(demo_name)]
+        force_data.append(demo['prop'][:, -6:-3])
+        torque_data.append(demo['prop'][:, -3:])
+
+    force_data = np.concatenate(force_data, 0)
+    torque_data = np.concatenate(torque_data, 0)
+    force_mean = np.mean(force_data, axis=0)
+    torque_mean = np.mean(torque_data, axis=0)
+    force_std= np.std(force_data, axis=0)
+    torque_std = np.std(torque_data, axis=0)
+
+    force = (prop_data[:, :3] - force_mean)/force_std
+    torque = (prop_data[:, 3:] - torque_mean)/torque_std
+
+    return np.concatenate([force, torque], axis=1)
+
+
 def add_demos_to_replay(
     replay: ReplayBuffer,
     data_path: str,
@@ -165,6 +190,7 @@ def add_demos_to_replay(
     obs_stack: int,
     reward_scale: float,
     prop_dim: int,
+    normalize_file: str,
 ):
     assert not use_state
     assert obs_stack == 1
@@ -176,11 +202,28 @@ def add_demos_to_replay(
     for episode_id in range(num_episode):
         if num_data > 0 and episode_id >= num_data:
             break
-
         episode_tag = f"demo_{episode_id}"
         episode = f[f"data/{episode_tag}"]
         actions: np.ndarray = np.array(episode["actions"])  # type: ignore
         images: np.ndarray = np.array(episode[f"obs/{rl_camera}_image"])  # type: ignore
+
+        if prop_dim == 6:
+            prop: np.ndarray = torch.from_numpy(normalize_data(normalize_file, np.array(episode[f"obs/prop"])[:, -prop_dim:], ) ).float() 
+        elif prop_dim == 10:
+            print(episode[f"obs/prop"][0])
+            prop: np.ndarray = torch.from_numpy(np.concatenate([np.array(episode[f"obs/prop"])[:, :4], \
+                                                                normalize_data(normalize_file, \
+                                                                np.array(episode[f"obs/prop"])[:, -6:], ), ], axis=1)).float() 
+            print(prop[0])
+            exit(0)
+        elif prop_dim == 4:
+            print(episode[f"obs/prop"][0])
+            prop: np.ndarray = torch.from_numpy(episode[f"obs/prop"][:, :prop_dim]).float()
+            print(prop[0])
+            exit(0)
+        else: 
+            prop: np.ndarray = episode[f"obs/prop"][:, -prop_dim:].float() # type: ignore
+
         rewards: np.ndarray = np.array(f[f"data/{episode_tag}/rewards"])  # type: ignore
         if rewards[-1] < 1.0:
             continue
@@ -192,7 +235,7 @@ def add_demos_to_replay(
             if i < episode_len:
                 obs = {
                     "obs": torch.from_numpy(images[i]),
-                    "prop": torch.zeros(prop_dim),
+                    "prop": prop[i],#torch.zeros(prop_dim),
                 }
 
             if i == 0:
