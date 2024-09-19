@@ -47,15 +47,15 @@ class QAgentConfig:
         if self.bootstrap_method == "":
             self.bootstrap_method = self.act_method
 
-
 class QAgent(nn.Module):
     def __init__(
-        self, use_state, obs_shape, prop_shape, action_dim, rl_camera: str, cfg: QAgentConfig
+        self, use_state, obs_shape, prop_shape, action_dim, rl_camera: str, cfg: QAgentConfig, return_stats=False,
     ):
         super().__init__()
         self.use_state = use_state
         self.rl_camera = rl_camera
         self.cfg = cfg
+        self.return_stats = return_stats
 
         if use_state:
             self.critic = MultiFcQ(obs_shape, action_dim, cfg.state_critic)
@@ -195,17 +195,28 @@ class QAgent(nn.Module):
                 use_target=False,
             )
         elif self.cfg.act_method == "ibrl":
-            action = self._act_ibrl(
-                obs=obs,
-                eval_mode=eval_mode,
-                stddev=stddev,
-                clip=None,
-                eps_greedy=self.cfg.ibrl_eps_greedy,
-                use_target=False,
-            )
+            if self.return_stats:
+                action, use_bc, qa, both_actions  = self._act_ibrl(
+                    obs=obs,
+                    eval_mode=eval_mode,
+                    stddev=stddev,
+                    clip=None,
+                    eps_greedy=self.cfg.ibrl_eps_greedy,
+                    use_target=False,
+                )
+            else:
+                action = self._act_ibrl(
+                    obs=obs,
+                    eval_mode=eval_mode,
+                    stddev=stddev,
+                    clip=None,
+                    eps_greedy=self.cfg.ibrl_eps_greedy,
+                    use_target=False,
+                )
+
 
         elif self.cfg.act_method == "force_adjusted_ibrl":
-            action = self._act_force_adjusted_ibrl(
+            action, use_bc, qa, both_actions = self._act_force_adjusted_ibrl(
                 obs=obs,
                 eval_mode=eval_mode,
                 stddev=stddev,
@@ -231,7 +242,11 @@ class QAgent(nn.Module):
         action = action.detach()
         if cpu:
             action = action.cpu()
-        return action
+
+        if not self.return_stats:
+            return action
+        else:
+            return action, use_bc, qa, both_actions
 
     def _act_default(
         self,
@@ -299,6 +314,9 @@ class QAgent(nn.Module):
         # best_action_idx: [batch]
         greedy_action_idx: torch.Tensor = qa.argmax(1)
         greedy_action = rl_bc_actions[range(bsize), greedy_action_idx]
+
+        rejected_action_idx: torch.Tensor = qa.argmin(1)
+        both_actions = rl_bc_actions
         # actions: [batch, action_dim]
 
         if eval_mode or eps_greedy == 1:
@@ -316,6 +334,7 @@ class QAgent(nn.Module):
             if self.stats is not None:
                 self.stats["actor/greedy"].append(use_greedy.sum(), bsize)
 
+        use_bc = (selected_action_idx >= 1).float()
         if self.stats is not None:
             use_bc = (selected_action_idx >= 1).float()
             if use_target:
@@ -332,8 +351,10 @@ class QAgent(nn.Module):
                     self.stats["actor/anorm_rl"].append(rl_action_norm)
                     self.stats["actor/anorm_bc"].append(bc_action_norm)
                     self.stats["actor/bc_train"].append(use_bc, bsize)
-
-        return action
+        if not self.return_stats:
+            return action
+        else:
+            return action, use_bc, qa, both_actions
     
     def _perturb_action(action):
         #generate a bunch of perturbations to the aciton

@@ -124,7 +124,7 @@ class Actor(nn.Module):
             prop = obs["prop"]
             all_input.append(prop)
 
-        policy_input = torch.cat(all_input, dim=-1)
+        policy_input = torch.cat(all_input, dim=-1).float()
         mu: torch.Tensor = self.policy(policy_input)
 
         if self.cfg.max_action_norm > 0:

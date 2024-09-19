@@ -41,9 +41,9 @@ class _QNet(nn.Module):
         feat = feat.flatten(1, 2)
         x = self.obs_proj(feat)
         if self.prop_dim > 0:
-            x = torch.cat([x, action, prop], dim=-1)
+            x = torch.cat([x, action, prop], dim=-1).float()
         else:
-            x = torch.cat([x, action], dim=-1)
+            x = torch.cat([x, action], dim=-1).float()
         q = self.q(x).squeeze(-1)
         return q
 

@@ -238,14 +238,15 @@ class ProprioObsWrapper(gym.Wrapper):
     for the proprioceptive state
     """
 
-    def __init__(self, env, idx_list, use_force, norm=False, norm_dataset=None):
+    def __init__(self, env, idx_list, use_force, no_prop, norm=False, norm_dataset=None):
         super().__init__(env)
         self.idx_list = idx_list
         self.model = self.env.env.env.model
         self.data = self.env.env.env.data
         self.use_force = use_force
+        self.no_prop = no_prop
         self.norm = norm
-
+        
         if self.use_force and self.norm:
             assert norm_dataset is not None
             f = h5py.File(norm_dataset, "r")
@@ -271,14 +272,16 @@ class ProprioObsWrapper(gym.Wrapper):
             self.force_std= np.array([1,1,1])
             self.torque_std = np.array([1,1,1])
 
+        print(self.force_mean, self.torque_mean)
+
 
     def _get_force_data(self):
         sensor_idx = np.sum(self.model.sensor_dim[: self.model.sensor_name2id("force_ee")])
         sensor_dim = self.model.sensor_dim[self.model.sensor_name2id("force_ee")]
         force_data = np.array(self.data.sensordata[sensor_idx : sensor_idx + sensor_dim])
 
-        sensor_idx = np.sum(self.model.sensor_dim[: self.model.sensor_name2id("torque_ee")])
-        sensor_dim = self.model.sensor_dim[self.model.sensor_name2id("torque_ee")]
+        sensor_idx = np.sum(self.model.sensor_dim[: self.model.sensor_name2id("torque_ee")])#torque_ee")])
+        sensor_dim = self.model.sensor_dim[self.model.sensor_name2id("torque_ee")]#torque_ee")]
         torque_data = np.array(self.data.sensordata[sensor_idx : sensor_idx + sensor_dim])
 
         return np.concatenate([(force_data - self.force_mean)/self.force_std, \
@@ -288,9 +291,11 @@ class ProprioObsWrapper(gym.Wrapper):
         if not self.use_force:
             obs["prop"] = np.take(obs["state"], self.idx_list)
         else:
-            obs["prop"] = np.concatenate([np.take(obs["state"], self.idx_list), self._get_force_data()], axis=0)
+            if self.no_prop:
+                obs["prop"] = self._get_force_data()
+            else:
+                obs["prop"] = np.concatenate([np.take(obs["state"], self.idx_list), self._get_force_data()], axis=0)
        
-
     def reset(self):
         obs = self.env.reset()
         self._modify_observation(obs)
@@ -470,6 +475,7 @@ class PixelMetaWorld:
         end_on_success=True,
         use_state=False,
         use_force = True,
+        no_prop = False,
         use_train_xml = True,
         norm=False, 
         norm_dataset=None,
@@ -500,7 +506,7 @@ class PixelMetaWorld:
         # For every outer call to step, make multiple inner calls to step
         self.env = ActionRepeatWrapper(env=self.base_env, num_repeats=action_repeat)
         # Add a key `prop` to the observation with proprioceptive dimensions
-        self.env = ProprioObsWrapper(env=self.env, idx_list=PROP_IDXS[env_name], use_force=use_force, norm=norm, norm_dataset=norm_dataset)
+        self.env = ProprioObsWrapper(env=self.env, idx_list=PROP_IDXS[env_name], use_force=use_force, no_prop=no_prop, norm=norm, norm_dataset=norm_dataset)
         # Add keys to the observation with each camera rendering
         self.env = ImageObsWrapper(env=self.env, camera_names=self.camera_names)
         # Add observation stacking for specified number of steps
@@ -549,8 +555,8 @@ class PixelMetaWorld:
         # - Logic for frame stacking is handled in StackWrapper
 
         state = None
-        if self.use_state:
-            state = torch.from_numpy(obs["state"]).to(self.device)
+        #if self.use_state:
+        state = torch.from_numpy(obs["state"]).to(self.device)
 
         prop = torch.from_numpy(obs["prop"]).to(self.device)
 
@@ -578,7 +584,7 @@ class PixelMetaWorld:
 
         if self.use_state:
             assert state is not None
-            rl_obs["state"] = state.to(self.device)
+        rl_obs["state"] = state.to(self.device)
 
         return rl_obs, all_image_obs
 
