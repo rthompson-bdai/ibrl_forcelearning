@@ -1,6 +1,6 @@
 episode_length: 100
 stddev_max: 0.1
-preload_num_data: 10
+preload_num_data: 0
 env_reward_scale: 1
 num_train_step: 50000
 replay_buffer_size: 500
@@ -9,7 +9,7 @@ use_force: False
 
 num_eval_episode: 20
 q_agent:
-  use_prop: 1
+  use_prop: 0
   act_method: "ibrl"
   enc_type: "drq"
   actor:

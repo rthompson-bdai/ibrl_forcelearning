@@ -51,6 +51,7 @@ env_names= [
     "window-open"]
 
 factors=[
+    "None",
     "arm_pos",
     "camera_pos",
     "distractor_pos",

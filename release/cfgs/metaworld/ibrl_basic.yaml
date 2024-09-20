@@ -6,10 +6,11 @@ num_train_step: 50000
 replay_buffer_size: 500
 use_wb: 1
 use_force: True
+#norm: True
 
 num_eval_episode: 20
 q_agent:
-  use_prop: True
+  use_prop: 1
   act_method: "ibrl"
   enc_type: "drq"
   actor:
