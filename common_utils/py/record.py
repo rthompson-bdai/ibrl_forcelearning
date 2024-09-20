@@ -8,7 +8,7 @@ import numpy as np
 class Recorder:
     def __init__(self, save_dir):
         if not os.path.exists(save_dir):
-            os.makedirs(save_dir)
+            os.makedirs(save_dir, )
 
         self.save_dir = save_dir
         self.combined_frames = []
@@ -28,10 +28,17 @@ class Recorder:
         combined = np.concatenate(combined, axis=1)
         self.combined_frames.append(combined)
 
-    def save(self, name):
+    def save(self, name, save_video=True, save_images=False):
         path = os.path.join(self.save_dir, f"{name}.mp4")
-        print(f"saving video to {path}")
-        # control freq defaults to 0
-        imageio.mimsave(path, self.combined_frames, fps=10)
+        gif_path = os.path.join(self.save_dir, f"{name}.gif")
+        if save_video:
+            print(f"saving video to {path}")
+            # control freq defaults to 0
+            imageio.mimsave(path, self.combined_frames, fps=10)
+            imageio.mimsave(gif_path, self.combined_frames, fps=10)
+        if save_images:
+            os.makedirs(os.path.join(self.save_dir, name), exist_ok=True)
+            for i, image in enumerate(self.combined_frames):
+                imageio.imwrite(os.path.join(self.save_dir, name, f'frame_{i}.png'), image)
         self.combined_frames.clear()
         return path
